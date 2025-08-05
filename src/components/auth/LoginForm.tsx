@@ -135,6 +135,7 @@ export default function LoginForm() {
           <div>
             <button
               type="submit"
+              disabled={loading}
               className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled::opacity-50 disabled:cursor-not-allowed transition-all duration-300"
             >
               {loading ? "Signing in ..." : "Sign In"}

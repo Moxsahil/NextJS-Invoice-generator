@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: invoice_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: invoice_db
+      POSTGRES_USER: invoice
+      POSTGRES_PASSWORD: moxsahil01
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - invoice_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoice -d invoice_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js Application
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: invoice_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://invoice:moxsahil01@postgres:5432/invoice_db
+      - NODE_ENV=production
+      - NEXTAUTH_SECRET=your-nextauth-secret-key-here
+      - NEXTAUTH_URL=http://localhost:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - invoice_network
+    # For development, uncomment these volumes:
+    # volumes:
+    #   - .:/app
+    #   - /app/node_modules
+    #   - /app/.next
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: invoice_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@invoice.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "8080:80"
+    depends_on:
+      - postgres
+    networks:
+      - invoice_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  invoice_network:
+    driver: bridge
