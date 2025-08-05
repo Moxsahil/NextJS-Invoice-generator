@@ -104,23 +104,23 @@ export default function Footer() {
 
         <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col sm:flex-row justify-between items-center">
           <p className="text-sm text-gray-400">
-            © 2025 InvoiceGen. All rights reserved.
+            © 2025 Invoice. All rights reserved.
           </p>
           <div className="flex space-x-6 mt-4 sm:mt:0">
             <Link
-              href="#"
+              href="https://www.instagram.com/moksshhh_.20/?hl=en"
               className="text-gray-400 hover:text-white transition-colors"
             >
               Instagram
             </Link>
             <Link
-              href="#"
+              href="https://www.linkedin.com/in/sahil-barak-865063216/"
               className="text-gray-400 hover:text-white transition-colors"
             >
               LinkedIn
             </Link>
             <Link
-              href="#"
+              href="https://github.com/Moxsahil"
               className="text-gray-400 hover:text-white transition-colors"
             >
               Github

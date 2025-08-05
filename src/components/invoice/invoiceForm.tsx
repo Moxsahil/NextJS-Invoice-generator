@@ -330,15 +330,21 @@ export default function InvoiceForm() {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Subtotal:</span>
-            <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
+            <span className="font-semibold text-gray-600">
+              ₹{subtotal.toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-600">SGST (2.5%):</span>
-            <span className="font-semibold">₹{sgstAmount.toFixed(2)}</span>
+            <span className="font-semibold text-gray-600">
+              ₹{sgstAmount.toFixed(2)}
+            </span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-gray-600">CGST (2.5%):</span>
-            <span className="font-semibold">₹{cgstAmount.toFixed(2)}</span>
+            <span className="font-semibold text-gray-600">
+              ₹{cgstAmount.toFixed(2)}
+            </span>
           </div>
           <div className="border-t pt-3 flex justify-between items-center">
             <span className="text-lg font-bold text-gray-900">
@@ -348,7 +354,8 @@ export default function InvoiceForm() {
               ₹{totalAmount.toFixed(2)}
             </span>
           </div>
-        </div>
+        </div>{" "}
+        text-gray-600
       </Card>
 
       {/* Submit Button */}
