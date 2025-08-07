@@ -1,10 +1,12 @@
-import { ButtonHTMLAttributes, forwardRef } from "react";
+import { ButtonHTMLAttributes, forwardRef, ReactElement } from "react"; // Just added ReactElement here
 import { cn } from "@/lib/utils";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "primary" | "secondary" | "outline" | "ghost" | "danger";
   size?: "sm" | "md" | "lg";
   loading?: boolean;
+  leftIcon?: ReactElement; // Just changed this from React.ReactNode to ReactElement
+  rightIcon?: ReactElement; // Just changed this from React.ReactNode to ReactElement
 }
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -15,6 +17,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       size = "md",
       loading,
       disabled,
+      leftIcon,
+      rightIcon,
       children,
       ...props
     },
@@ -39,6 +43,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       lg: "px-6 py-3 text-lg",
     };
 
+    const shouldShowLeftIcon = leftIcon && !loading;
+    const shouldShowRightIcon = rightIcon && !loading;
+
     return (
       <button
         className={cn(
@@ -55,7 +62,12 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {loading && (
           <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
         )}
+
+        {shouldShowLeftIcon && <span className="mr-2">{leftIcon}</span>}
+
         {children}
+
+        {shouldShowRightIcon && <span className="ml-2">{rightIcon}</span>}
       </button>
     );
   }
