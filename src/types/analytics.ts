@@ -1,15 +1,30 @@
 export interface AnalyticsData {
+  // Key metrics
   totalRevenue: number;
   totalInvoices: number;
   averageInvoice: number;
   collectionRate: number;
-  monthlyRevenue: MonthlyRevenueData[];
-  invoiceStatus: InvoiceStatusData[];
-  topCustomers: TopCustomerData[];
+
+  // Growth rates (percentage)
   revenueGrowth: number;
   invoiceGrowth: number;
   avgInvoiceGrowth: number;
   collectionRateChange: number;
+
+  // Amount breakdowns
+  paidAmount: number;
+  pendingAmount: number;
+  overdueAmount: number;
+
+  // Chart data
+  monthlyRevenue: MonthlyRevenueData[];
+  invoiceStatus: InvoiceStatusData[];
+  topCustomers: TopCustomerData[];
+
+  // Meta data
+  dateRange: string;
+  startDate: string;
+  endDate: string;
 }
 
 export interface MonthlyRevenueData {
@@ -21,123 +36,95 @@ export interface MonthlyRevenueData {
 export interface InvoiceStatusData {
   name: string;
   value: number;
-  color?: string;
 }
 
 export interface TopCustomerData {
   id: string;
   name: string;
-  email?: string;
-  amount: number;
-  invoices: number;
+  email: string;
   status: string;
-}
-
-export interface RevenueBreakdown {
-  paid: number;
-  pending: number;
-  overdue: number;
-  draft: number;
-}
-
-export interface PaymentTrends {
-  onTimePayments: number;
-  latePayments: number;
-  averagePaymentTime: number; // days
-  paymentMethods: PaymentMethodData[];
-}
-
-export interface PaymentMethodData {
-  method: string;
-  count: number;
   amount: number;
-}
-
-export interface GeographicData {
-  country: string;
-  customers: number;
-  revenue: number;
-  averageInvoice: number;
-}
-
-export interface TimeSeriesData {
-  date: string;
-  revenue: number;
   invoices: number;
-  customers: number;
-}
-
-export interface ComparisonData {
-  current: number;
-  previous: number;
-  change: number;
-  changePercent: number;
 }
 
 export interface AnalyticsFilters {
-  dateRange:
-    | "today"
-    | "week"
-    | "1month"
-    | "3months"
-    | "6months"
-    | "1year"
-    | "custom";
-  startDate?: string;
-  endDate?: string;
-  customerId?: string;
-  status?: string[];
-  currency?: string;
+  dateRange: "1month" | "3months" | "6months";
+  customStartDate?: string;
+  customEndDate?: string;
 }
 
-export interface DashboardMetrics {
-  revenue: {
-    current: number;
-    previous: number;
-    growth: number;
-  };
-  invoices: {
-    total: number;
-    paid: number;
-    pending: number;
-    overdue: number;
-  };
-  customers: {
-    total: number;
-    active: number;
-    new: number;
-  };
-  payments: {
-    collected: number;
-    outstanding: number;
-    averageDays: number;
-  };
+export interface AnalyticsResponse {
+  analytics: AnalyticsData;
 }
 
-export interface AdvancedAnalytics {
-  customerLifetimeValue: number;
-  churnRate: number;
-  revenuePerCustomer: number;
-  seasonalTrends: SeasonalTrendData[];
-  profitMargins: ProfitMarginData[];
-  forecastData: ForecastData[];
+// Additional analytics interfaces for future expansion
+export interface RevenueBreakdown {
+  totalRevenue: number;
+  paidRevenue: number;
+  pendingRevenue: number;
+  overdueRevenue: number;
+  monthOverMonth: number;
+  yearOverYear: number;
 }
 
-export interface SeasonalTrendData {
-  period: string;
-  revenue: number;
-  trend: "up" | "down" | "stable";
+export interface CustomerAnalytics {
+  totalCustomers: number;
+  activeCustomers: number;
+  newCustomers: number;
+  topPayingCustomers: TopCustomerData[];
+  customerGrowthRate: number;
+  averageCustomerValue: number;
 }
 
-export interface ProfitMarginData {
-  category: string;
-  revenue: number;
-  costs: number;
-  margin: number;
+export interface InvoiceAnalytics {
+  totalInvoices: number;
+  paidInvoices: number;
+  pendingInvoices: number;
+  overdueInvoices: number;
+  draftInvoices: number;
+  averageInvoiceValue: number;
+  averagePaymentTime: number; // in days
+  statusDistribution: InvoiceStatusData[];
 }
 
-export interface ForecastData {
-  period: string;
-  predictedRevenue: number;
-  confidence: number;
+export interface DateRangeOption {
+  value: "1month" | "3months" | "6months";
+  label: string;
+  description: string;
 }
+
+export const DATE_RANGE_OPTIONS: DateRangeOption[] = [
+  {
+    value: "1month",
+    label: "Last Month",
+    description: "Data from the past 30 days",
+  },
+  {
+    value: "3months",
+    label: "Last 3 Months",
+    description: "Data from the past 90 days",
+  },
+  {
+    value: "6months",
+    label: "Last 6 Months",
+    description: "Data from the past 180 days",
+  },
+];
+
+// Export utility functions
+export const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
+export const formatPercentage = (value: number): string => {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
+};
+
+export const formatNumber = (value: number): string => {
+  return new Intl.NumberFormat("en-IN").format(value);
+};

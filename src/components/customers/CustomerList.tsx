@@ -151,7 +151,7 @@ export default function CustomerList({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
-                      ${(customer.totalAmount || 0).toLocaleString()}
+                      {"₹"} {(customer.totalAmount || 0).toLocaleString()}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">

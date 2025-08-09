@@ -24,13 +24,14 @@ datasource db {
 // }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
+  id        String     @id @default(cuid())
+  email     String     @unique
   name      String
   password  String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
   invoices  Invoice[]
+  customers Customer[]
 }
 
 model Invoice {
@@ -53,8 +54,10 @@ model Invoice {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
   userId          String
+  customerId      String?
   user            User          @relation(fields: [userId], references: [id])
   items           InvoiceItem[]
+  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
 }
 
 model InvoiceItem {
@@ -72,4 +75,25 @@ enum InvoiceStatus {
   SENT
   PAID
   OVERDUE
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  gstin     String? // GST Identification Number
+  address   String?
+  city      String?
+  state     String?
+  zipCode   String?
+  country   String?
+  status    String   @default("Active") // "Active" | "Inactive"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String?
+
+  // Relations
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  invoices Invoice[]
 }

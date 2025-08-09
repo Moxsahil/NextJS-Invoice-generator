@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { FileText, DollarSign, Users, TrendingUp, Plus } from "lucide-react";
+import {
+  FileText,
+  DollarSign,
+  Users,
+  TrendingUp,
+  Plus,
+  IndianRupee,
+} from "lucide-react";
 import Link from "next/link";
 
 interface DashboardStats {
@@ -118,7 +125,7 @@ export default function DashboardPage() {
         >
           <div className="flex items-center">
             <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-6 h-6 text-green-600" />
+              <IndianRupee className="w-6 h-6 text-green-600" />
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Amount</p>

@@ -28,6 +28,7 @@ export interface Invoice {
   updatedAt: string;
   userId: string;
   items: InvoiceItem[];
+  total: number;
 }
 
 export enum InvoiceStatus {
