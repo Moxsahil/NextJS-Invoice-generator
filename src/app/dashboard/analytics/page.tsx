@@ -18,9 +18,11 @@ export default function AnalyticsPage() {
 
   if (error) {
     return (
-      <div className="text-black space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
+      <div className="space-y-6 text-black">
+        <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-center md:space-y-0">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Analytics
+          </h1>
         </div>
 
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
@@ -38,20 +40,23 @@ export default function AnalyticsPage() {
                 d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <h3> Error Loading Analytics</h3>
+            <h3 className="text-lg font-medium text-red-800">
+              Error Loading Analytics
+            </h3>
           </div>
-          {/*  TODO: Update error dynamically */}
-          <p className="text-red-600 mb-4">Error</p>
-          <div className="flex space-x-3">
+          <p className="text-red-600 mb-4">Unable to load analytics data</p>
+          <div className="flex flex-col space-y-3 md:flex-row md:space-y-0 md:space-x-3">
             <button
-              onClick={() => {}}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              onClick={refreshData}
+              className="w-full md:w-auto px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
             >
               Retry
             </button>
             <button
-              onClick={() => {}}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              onClick={() =>
+                (window.location.href = "/dashboard/invoices/create")
+              }
+              className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Create First Invoice
             </button>
@@ -62,11 +67,14 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="text-black space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 md:space-y-8 text-black">
+      {/* Header - Same pattern as customer page */}
+      <div className="flex flex-col space-y-4 md:flex-row md:justify-between md:items-start md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-          <p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Analytics
+          </h1>
+          <p className="text-sm text-gray-600 mt-1 break-words">
             {analyticsData && (
               <>
                 {new Date(analyticsData.startDate).toLocaleDateString()} -{" "}
@@ -77,12 +85,12 @@ export default function AnalyticsPage() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+        <div className="flex flex-col space-y-2 md:flex-row md:space-y-0 md:space-x-3 w-full md:w-auto">
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value as any)}
             disabled={loading}
-            className="w-full sm:w-auto px-2 py-2 border border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
+            className="w-full md:w-auto px-3 py-2 border border-gray-400 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white text-gray-900"
           >
             {DATE_RANGE_OPTIONS.map((option) => (
               <option
@@ -95,12 +103,11 @@ export default function AnalyticsPage() {
             ))}
           </select>
 
-          {/* refresh button */}
           <button
             onClick={refreshData}
             disabled={loading}
             title="Refresh Data"
-            className="w-full sm:auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full md:w-auto px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             <svg
               className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
@@ -118,11 +125,10 @@ export default function AnalyticsPage() {
             {loading ? "Refreshing..." : "Refresh"}
           </button>
 
-          {/* Export button */}
           <button
             onClick={exportReport}
             disabled={loading || isExporting || !analyticsData}
-            className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            className="w-full md:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             title="Export analytics report"
           >
             <svg
@@ -162,6 +168,7 @@ export default function AnalyticsPage() {
           onRefresh={refreshData}
         />
       )}
+
       {/* Empty State - No Data */}
       {!loading && !analyticsData && !error && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-12 text-center">
@@ -185,7 +192,7 @@ export default function AnalyticsPage() {
             It looks like you don't have any invoices yet. Create your first
             invoice to start seeing analytics and insights.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col space-y-3 md:flex-row md:space-y-0 md:space-x-3 justify-center">
             <button
               onClick={() =>
                 (window.location.href = "/dashboard/invoices/create")

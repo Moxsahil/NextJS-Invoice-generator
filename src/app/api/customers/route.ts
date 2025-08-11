@@ -22,7 +22,7 @@ async function getOrCreateDefaultUser() {
   return user.id;
 }
 
-// GET /api/customers - Fetch all customers
+// GET /api/customers - Fetch all customers with real-time invoice data
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -31,71 +31,100 @@ export async function GET(request: Request) {
     // If no specific userId is provided, get the default user
     const targetUserId = userId || (await getOrCreateDefaultUser());
 
-    // First, get all customers
+    // Get all customers with their invoices
     const customers = await prisma.customer.findMany({
       where: {
         userId: targetUserId,
+      },
+      include: {
+        invoices: {
+          select: {
+            id: true,
+            totalAmount: true,
+            status: true,
+            createdAt: true,
+            invoiceDate: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
     });
 
-    // Then, get invoice data for each customer separately
-    const transformedCustomers = await Promise.all(
-      customers.map(async (customer) => {
-        // Get invoices for this customer
-        const invoices = await prisma.invoice.findMany({
-          where: {
-            customerId: customer.id,
-          },
-          select: {
-            id: true,
-            subtotal: true,
-            cgstAmount: true,
-            sgstAmount: true,
-            totalAmount: true,
-            createdAt: true,
-          },
-        });
+    // Transform customers with accurate invoice calculations
+    const transformedCustomers = customers.map((customer) => {
+      const invoices = customer.invoices;
 
-        // Calculate total amount from all invoices
-        const totalAmount = invoices.reduce(
-          (sum, invoice) => sum + (invoice.totalAmount || 0),
-          0
-        );
+      // Calculate accurate statistics
+      const totalInvoices = invoices.length;
 
-        // Get the last invoice date
-        const lastInvoice =
-          invoices.length > 0
-            ? invoices.sort(
-                (a, b) =>
-                  new Date(b.createdAt).getTime() -
-                  new Date(a.createdAt).getTime()
-              )[0]
-            : null;
+      // Total revenue from ALL invoices (not just paid ones for now, as per your current setup)
+      const totalAmount = invoices.reduce(
+        (sum, invoice) => sum + (invoice.totalAmount || 0),
+        0
+      );
 
-        return {
-          id: customer.id,
-          name: customer.name,
-          email: customer.email,
-          phone: customer.phone,
-          gstin: customer.gstin,
-          address: customer.address,
-          city: customer.city,
-          state: customer.state,
-          zipCode: customer.zipCode,
-          country: customer.country,
-          status: customer.status,
-          createdAt: customer.createdAt.toISOString(),
-          updatedAt: customer.updatedAt.toISOString(),
-          userId: customer.userId,
-          totalInvoices: invoices.length,
-          totalAmount: totalAmount,
-          lastInvoice: lastInvoice ? lastInvoice.createdAt.toISOString() : null,
-        };
-      })
-    );
+      // Alternative: Only count PAID invoices for revenue
+      // const totalAmount = invoices
+      //   .filter(inv => inv.status === "PAID")
+      //   .reduce((sum, invoice) => sum + (invoice.totalAmount || 0), 0);
+
+      // Get the most recent invoice date
+      const lastInvoice = invoices.length > 0 ? invoices[0].createdAt : null;
+
+      // Calculate additional metrics
+      const averageInvoiceValue =
+        totalInvoices > 0 ? totalAmount / totalInvoices : 0;
+
+      // Count by status
+      const invoicesByStatus = invoices.reduce((acc, invoice) => {
+        acc[invoice.status] = (acc[invoice.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      return {
+        id: customer.id,
+        name: customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        gstin: customer.gstin,
+        address: customer.address,
+        city: customer.city,
+        state: customer.state,
+        zipCode: customer.zipCode,
+        country: customer.country,
+        status: customer.status,
+        createdAt: customer.createdAt.toISOString(),
+        updatedAt: customer.updatedAt.toISOString(),
+        userId: customer.userId,
+
+        // Real-time calculated fields that will update when invoices are created
+        totalInvoices: totalInvoices,
+        totalAmount: totalAmount,
+        lastInvoice: lastInvoice ? lastInvoice.toISOString() : null,
+        averageInvoiceValue: Math.round(averageInvoiceValue),
+
+        // Additional metrics for detailed views
+        invoiceStats: {
+          paid: invoicesByStatus.PAID || 0,
+          pending: invoicesByStatus.SENT || 0,
+          overdue: invoicesByStatus.OVERDUE || 0,
+          draft: invoicesByStatus.DRAFT || 0,
+        },
+
+        // Include recent invoices for context
+        recentInvoices: invoices.slice(0, 3).map((inv) => ({
+          id: inv.id,
+          amount: inv.totalAmount,
+          status: inv.status,
+          date: inv.invoiceDate.toISOString(),
+        })),
+      };
+    });
 
     return NextResponse.json(transformedCustomers, { status: 200 });
   } catch (error) {
@@ -107,7 +136,7 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/customers - Create customer with dynamic user creation
+// POST /api/customers - Create customer (unchanged)
 export async function POST(request: Request) {
   try {
     const data = await request.json();
@@ -179,9 +208,19 @@ export async function POST(request: Request) {
         createdAt: customer.createdAt.toISOString(),
         updatedAt: customer.updatedAt.toISOString(),
         userId: customer.userId,
+
+        // Initialize with zero values for new customers
         totalInvoices: 0,
         totalAmount: 0,
         lastInvoice: null,
+        averageInvoiceValue: 0,
+        invoiceStats: {
+          paid: 0,
+          pending: 0,
+          overdue: 0,
+          draft: 0,
+        },
+        recentInvoices: [],
       },
       { status: 201 }
     );

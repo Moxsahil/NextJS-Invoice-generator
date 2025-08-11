@@ -53,16 +53,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           stiffness: 300,
         }}
         className={cn(
-          "fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-gray-200 lg:translate-x-0 lg:static lg:z-0",
-          "lg:block"
+          "fixed top-0 left-0 z-50 h-full w-64  bg-white border-r border-gray-200 lg:translate-x-0 lg:static lg:z-0",
+          "lg:block bg-[#1c2535] shadow-lg"
         )}
       >
-        <div className="flex items-center justify-between p-4 lg:hidden">
+        <div className="flex items-center justify-between p-4 lg:hidden ">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">I</span>
             </div>
-            <span className="font-bold text-xl text-gray-900">InvoiceGen</span>
+            <span className="font-bold text-xl text-white">InvoiceGen</span>
           </div>
           <button
             onClick={onClose}
@@ -85,8 +85,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 className={cn(
                   "flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 border-r-2 border-blue-600"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? "bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700  border-r-2 border-blue-600"
+                    : "text-gray-400 hover:bg-red-300 hover:text-gray-900"
                 )}
               >
                 <Icon
@@ -99,7 +99,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {isActive && (
                   <motion.div
                     layoutId="activeIndicator"
-                    className="ml-auto w-2 h-2 bg-blue-600 rounded-full"
+                    className="ml-auto w-2 h-2  bg-blue-600 rounded-full"
                   />
                 )}
               </Link>

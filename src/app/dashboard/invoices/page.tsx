@@ -10,7 +10,7 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 p-6">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
           {/* Header */}

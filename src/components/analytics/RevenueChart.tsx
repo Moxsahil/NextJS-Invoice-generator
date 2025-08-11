@@ -11,6 +11,8 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
+  ComposedChart,
+  Bar,
 } from "recharts";
 import {
   MonthlyRevenueData,
@@ -23,40 +25,72 @@ interface RevenueChartProps {
 }
 
 const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
-  // Custom tooltip component
+  // Enhanced tooltip component with beautiful styling
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const revenueData = payload[0];
       const invoiceData = revenueData.payload;
 
       return (
-        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4 min-w-[200px]">
-          <p className="font-semibold text-gray-900 mb-2">{label}</p>
-          <div className="space-y-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-                <span className="text-sm text-gray-600">Revenue:</span>
-              </div>
-              <span className="font-semibold text-blue-600">
-                {formatCurrency(revenueData.value)}
-              </span>
+        <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-2xl shadow-2xl p-5 min-w-[220px] transform transition-all duration-200">
+          <div className="text-center mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-full text-sm font-semibold">
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+              {label}
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-                <span className="text-sm text-gray-600">Invoices:</span>
-              </div>
-              <span className="font-semibold text-green-600">
-                {formatNumber(invoiceData.invoices)}
-              </span>
-            </div>
-            {invoiceData.invoices > 0 && (
-              <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-                <span className="text-xs text-gray-500">Avg per invoice:</span>
-                <span className="text-xs font-medium text-gray-700">
-                  {formatCurrency(revenueData.value / invoiceData.invoices)}
+          </div>
+
+          <div className="space-y-3">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full shadow-sm"></div>
+                  <span className="text-sm font-medium text-slate-700">
+                    Revenue
+                  </span>
+                </div>
+                <span className="font-bold text-blue-700 text-lg">
+                  {formatCurrency(revenueData.value)}
                 </span>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full shadow-sm"></div>
+                  <span className="text-sm font-medium text-slate-700">
+                    Invoices
+                  </span>
+                </div>
+                <span className="font-bold text-emerald-700 text-lg">
+                  {formatNumber(invoiceData.invoices)}
+                </span>
+              </div>
+            </div>
+
+            {invoiceData.invoices > 0 && (
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-3 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-700">
+                    Avg per invoice
+                  </span>
+                  <span className="font-bold text-purple-700">
+                    {formatCurrency(revenueData.value / invoiceData.invoices)}
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -66,7 +100,7 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
     return null;
   };
 
-  // Calculate some stats for the header
+  // Calculate comprehensive statistics
   const totalRevenue = data.reduce((sum, item) => sum + item.revenue, 0);
   const totalInvoices = data.reduce((sum, item) => sum + item.invoices, 0);
   const avgMonthlyRevenue = data.length > 0 ? totalRevenue / data.length : 0;
@@ -78,150 +112,459 @@ const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
         100
       : 0;
 
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">Revenue Trend</h3>
-          <p className="text-sm text-gray-600 mt-1">
-            Monthly revenue progression over time
-          </p>
-        </div>
+  // Find best and worst performing months
+  const bestMonth =
+    data.length > 0
+      ? data.reduce(
+          (max, item) => (item.revenue > max.revenue ? item : max),
+          data[0]
+        )
+      : null;
 
-        {/* Summary stats */}
-        <div className="text-right">
-          <div className="text-sm text-gray-600">Period Growth</div>
-          <div
-            className={`text-lg font-semibold ${
-              growth >= 0 ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {growth >= 0 ? "+" : ""}
-            {growth.toFixed(1)}%
+  const worstMonth =
+    data.length > 0
+      ? data.reduce(
+          (min, item) => (item.revenue < min.revenue ? item : min),
+          data[0]
+        )
+      : null;
+
+  // Calculate trend direction for last 3 months
+  const recentTrend =
+    data.length >= 3
+      ? (() => {
+          const lastThree = data.slice(-3);
+          const increases = lastThree
+            .slice(1)
+            .filter((month, i) => month.revenue > lastThree[i].revenue).length;
+          return increases >= 2 ? "up" : increases === 1 ? "stable" : "down";
+        })()
+      : "stable";
+
+  return (
+    <div className="h-full">
+      {data.length > 0 ? (
+        <div className="space-y-6">
+          {/* Header with Enhanced Stats */}
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-8 bg-gradient-to-b from-blue-500 to-indigo-600 rounded-full"></div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">
+                    Revenue Analytics
+                  </h3>
+                  <p className="text-slate-600">
+                    Monthly performance and growth trends
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Growth Indicator */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                <div className="text-sm text-slate-600 mb-1">Period Growth</div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full ${
+                      growth >= 5
+                        ? "bg-emerald-100 text-emerald-700"
+                        : growth >= 0
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-rose-100 text-rose-700"
+                    }`}
+                  >
+                    {growth >= 0 ? (
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
+                        />
+                      </svg>
+                    )}
+                    <span className="font-bold text-lg">
+                      {growth >= 0 ? "+" : ""}
+                      {growth.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Trend Indicator */}
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                <div className="text-sm text-slate-600 mb-1">Recent Trend</div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`flex items-center gap-1 px-3 py-1 rounded-full ${
+                      recentTrend === "up"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : recentTrend === "stable"
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-rose-100 text-rose-700"
+                    }`}
+                  >
+                    {recentTrend === "up"
+                      ? "📈"
+                      : recentTrend === "stable"
+                      ? "➡️"
+                      : "📉"}
+                    <span className="font-medium capitalize">
+                      {recentTrend}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Chart Legend with Enhanced Styling */}
+          <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-2xl p-4 border border-slate-200">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full shadow-sm"></div>
+                  <span className="font-medium text-slate-700">
+                    Revenue Trend
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full shadow-sm"></div>
+                  <span className="font-medium text-slate-700">
+                    Invoice Volume
+                  </span>
+                </div>
+              </div>
+              <div className="text-sm text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-200">
+                Monthly Average:{" "}
+                <span className="font-semibold text-slate-900">
+                  {formatCurrency(avgMonthlyRevenue)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Chart Container */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <div className="relative">
+              {/* Background gradient */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/30 to-indigo-50/30 rounded-2xl"></div>
+
+              <div className="relative">
+                <ResponsiveContainer width="100%" height={350}>
+                  <ComposedChart
+                    data={data}
+                    margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="revenueGradient"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#3b82f6"
+                          stopOpacity={0.3}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#3b82f6"
+                          stopOpacity={0.05}
+                        />
+                      </linearGradient>
+                      <linearGradient
+                        id="lineGradient"
+                        x1="0"
+                        y1="0"
+                        x2="1"
+                        y2="0"
+                      >
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#6366f1" />
+                      </linearGradient>
+                    </defs>
+
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="#e2e8f0"
+                      opacity={0.6}
+                      vertical={false}
+                    />
+
+                    <XAxis
+                      dataKey="month"
+                      stroke="#64748b"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      interval="preserveStartEnd"
+                      dy={10}
+                    />
+
+                    <YAxis
+                      stroke="#64748b"
+                      fontSize={11}
+                      tickLine={false}
+                      axisLine={false}
+                      width={60}
+                      tickFormatter={(value) => {
+                        if (value >= 10000000)
+                          return `₹${(value / 10000000).toFixed(1)}Cr`;
+                        if (value >= 100000)
+                          return `₹${(value / 100000).toFixed(1)}L`;
+                        if (value >= 1000)
+                          return `₹${(value / 1000).toFixed(0)}k`;
+                        return `₹${value}`;
+                      }}
+                    />
+
+                    <Tooltip content={<CustomTooltip />} />
+
+                    {/* Area fill under the line */}
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="none"
+                      fill="url(#revenueGradient)"
+                    />
+
+                    {/* Invoice count as bars */}
+                    <Bar
+                      dataKey="invoices"
+                      fill="#10b981"
+                      opacity={0.1}
+                      radius={[2, 2, 0, 0]}
+                      yAxisId="invoices"
+                    />
+
+                    {/* Main revenue line */}
+                    <Line
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke="url(#lineGradient)"
+                      strokeWidth={3}
+                      dot={{
+                        fill: "#ffffff",
+                        strokeWidth: 3,
+                        r: 4,
+                        stroke: "#3b82f6",
+                      }}
+                      activeDot={{
+                        r: 6,
+                        stroke: "#3b82f6",
+                        strokeWidth: 3,
+                        fill: "#ffffff",
+                        className: "drop-shadow-lg",
+                      }}
+                      connectNulls={false}
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Enhanced Statistics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {[
+              {
+                label: "Total Revenue",
+                value: formatCurrency(totalRevenue),
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                ),
+                gradient: "from-emerald-500 to-teal-600",
+                bgGradient: "from-emerald-50 to-teal-50",
+                borderColor: "border-emerald-200",
+              },
+              {
+                label: "Total Invoices",
+                value: formatNumber(totalInvoices),
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                ),
+                gradient: "from-blue-500 to-indigo-600",
+                bgGradient: "from-blue-50 to-indigo-50",
+                borderColor: "border-blue-200",
+              },
+              {
+                label: "Best Month",
+                value: bestMonth?.month || "N/A",
+                subtitle: bestMonth ? formatCurrency(bestMonth.revenue) : "",
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"
+                    />
+                  </svg>
+                ),
+                gradient: "from-amber-500 to-orange-600",
+                bgGradient: "from-amber-50 to-orange-50",
+                borderColor: "border-amber-200",
+              },
+              {
+                label: "Monthly Average",
+                value: formatCurrency(avgMonthlyRevenue),
+                subtitle: `${data.length} months`,
+                icon: (
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                    />
+                  </svg>
+                ),
+                gradient: "from-purple-500 to-pink-600",
+                bgGradient: "from-purple-50 to-pink-50",
+                borderColor: "border-purple-200",
+              },
+            ].map((stat, index) => (
+              <div
+                key={index}
+                className={`group relative bg-gradient-to-br ${stat.bgGradient} rounded-2xl p-6 border-2 ${stat.borderColor} hover:shadow-xl transition-all duration-300 overflow-hidden`}
+              >
+                <div className="relative">
+                  <div className="flex items-start justify-between mb-4">
+                    <div
+                      className={`p-3 bg-gradient-to-r ${stat.gradient} rounded-xl text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}
+                    >
+                      {stat.icon}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-600 mb-2">
+                      {stat.label}
+                    </h4>
+                    <p className="text-2xl font-bold text-slate-900 mb-1">
+                      {stat.value}
+                    </p>
+                    {stat.subtitle && (
+                      <p className="text-sm text-slate-600">{stat.subtitle}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
-
-      {/* Chart legend */}
-      <div className="flex items-center space-x-6 mb-4">
-        <div className="flex items-center text-sm">
-          <div className="w-3 h-3 bg-blue-500 rounded-full mr-2"></div>
-          <span className="text-gray-600">Revenue</span>
-        </div>
-        <div className="flex items-center text-sm">
-          <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-          <span className="text-gray-600">Invoice Count</span>
-        </div>
-        <div className="text-xs text-gray-500 ml-auto">
-          Avg: {formatCurrency(avgMonthlyRevenue)}/month
-        </div>
-      </div>
-
-      {data.length > 0 ? (
-        <ResponsiveContainer width="100%" height={320}>
-          <LineChart
-            data={data}
-            margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis
-              dataKey="month"
-              stroke="#64748b"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              stroke="#64748b"
-              fontSize={12}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(value) => {
-                if (value >= 100000) return `₹${(value / 100000).toFixed(1)}L`;
-                if (value >= 1000) return `₹${(value / 1000).toFixed(0)}k`;
-                return `₹${value}`;
-              }}
-            />
-            <Tooltip content={<CustomTooltip />} />
-
-            {/* Revenue line */}
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              stroke="#3b82f6"
-              strokeWidth={3}
-              dot={{ fill: "#3b82f6", strokeWidth: 2, r: 5 }}
-              activeDot={{
-                r: 7,
-                stroke: "#3b82f6",
-                strokeWidth: 2,
-                fill: "#ffffff",
-              }}
-              connectNulls={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
       ) : (
-        <div className="flex items-center justify-center h-80 text-gray-500">
-          <div className="text-center">
-            <svg
-              className="mx-auto h-16 w-16 text-gray-300 mb-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1}
-                d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
-              />
-            </svg>
-            <h4 className="text-lg font-medium text-gray-900 mb-2">
+        /* Enhanced Empty State */
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center max-w-md">
+            <div className="relative mb-8">
+              <div className="w-32 h-32 mx-auto bg-gradient-to-br from-blue-100 to-indigo-200 rounded-3xl flex items-center justify-center shadow-xl">
+                <svg
+                  className="w-16 h-16 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"
+                  />
+                </svg>
+              </div>
+              <div className="absolute -top-2 -right-2 w-10 h-10 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-full flex items-center justify-center shadow-lg">
+                <span className="text-white text-xl">📊</span>
+              </div>
+            </div>
+
+            <h3 className="text-2xl font-bold text-slate-900 mb-3">
               No Revenue Data
-            </h4>
-            <p className="text-gray-600 mb-4">
-              No revenue data available for the selected period.
-              <br />
-              Create some invoices to see trends appear here.
+            </h3>
+            <p className="text-slate-600 mb-8 leading-relaxed">
+              No revenue data available for the selected period. Create some
+              invoices to see beautiful trends and analytics appear here.
             </p>
+
             <button
               onClick={() =>
                 (window.location.href = "/dashboard/invoices/create")
               }
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="group inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 font-semibold"
             >
-              Create Invoice
+              <svg
+                className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              Create Your First Invoice
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Additional insights */}
-      {data.length > 0 && (
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="text-center">
-              <div className="text-gray-600">Total Revenue</div>
-              <div className="font-semibold text-gray-900">
-                {formatCurrency(totalRevenue)}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Total Invoices</div>
-              <div className="font-semibold text-gray-900">
-                {formatNumber(totalInvoices)}
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-gray-600">Best Month</div>
-              <div className="font-semibold text-gray-900">
-                {data.reduce(
-                  (max, item) => (item.revenue > max.revenue ? item : max),
-                  data[0]
-                )?.month || "N/A"}
-              </div>
-            </div>
           </div>
         </div>
       )}

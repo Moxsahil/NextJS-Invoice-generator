@@ -36,11 +36,25 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+      {/* Header with navigation for desktop, mobile menu for mobile */}
+      <Header
+        onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+        showMobileMenu={true}
+        showNavigation={true}
+      />
+
       <div className="flex">
-        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        <main className="flex-1 p-6 lg:ml-64">{children}</main>
+        {/* Sidebar - only show on mobile when open */}
+        <div className="lg:hidden">
+          <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        </div>
+
+        {/* Main content - no left margin on desktop since no sidebar */}
+        <main className="flex-1 w-full">{children}</main>
       </div>
+
+      {/* Keep your footer if needed */}
+      {/* <Footer /> */}
     </div>
   );
 }

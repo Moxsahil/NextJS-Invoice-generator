@@ -3,8 +3,51 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Calculator, FileText, Zap } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export default function Hero() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      // Method 1: Check for authentication token in localStorage
+      const token =
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("token") ||
+        localStorage.getItem("accessToken");
+
+      // Method 2: Check for user data in localStorage
+      const userData =
+        localStorage.getItem("user") || localStorage.getItem("userData");
+
+      // Method 3: Check for session/cookies (if you're using cookies)
+      const sessionCookie =
+        document.cookie.includes("session=") ||
+        document.cookie.includes("auth=");
+
+      // Determine if user is logged in based on any of the above
+      const userIsAuthenticated = !!(token || userData || sessionCookie);
+
+      setIsLoggedIn(userIsAuthenticated);
+      setIsLoading(false);
+    };
+
+    // Check auth status on component mount
+    checkAuthStatus();
+
+    // Optional: Listen for storage changes (useful for multi-tab scenarios)
+    const handleStorageChange = () => {
+      checkAuthStatus();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+
+    // Cleanup listener on unmount
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
   return (
     <section className="relative overflow-hidden py-20 lg:py-32">
       <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10" />
@@ -51,20 +94,39 @@ export default function Hero() {
               transition={{ delay: 0.6, duration: 0.8 }}
               className="flex flex-col sm:flex-row gap-4"
             >
-              <Link
-                href="/auth/register"
-                className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
-              >
-                Get Started Free
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Link>
+              {isLoading ? (
+                // Show loading state
+                <div className="inline-flex items-center justify-center px-8 py-4 bg-gray-200 animate-pulse rounded-xl">
+                  <span className="text-gray-500">Loading...</span>
+                </div>
+              ) : isLoggedIn ? (
+                // Show dashboard button when logged in
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+                >
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 w-5 h-5" />
+                </Link>
+              ) : (
+                // Show auth buttons when not logged in
+                <>
+                  <Link
+                    href="/auth/register"
+                    className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300"
+                  >
+                    Get Started Free
+                    <ArrowRight className="ml-2 w-5 h-5" />
+                  </Link>
 
-              <Link
-                href="/auth/login"
-                className="inline-flex items-center justify-center px-8 py-4 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-300"
-              >
-                Sign In
-              </Link>
+                  <Link
+                    href="/auth/login"
+                    className="inline-flex items-center justify-center px-8 py-4 border-2 border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-all duration-300"
+                  >
+                    Sign In
+                  </Link>
+                </>
+              )}
             </motion.div>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -93,14 +155,14 @@ export default function Hero() {
             transition={{ duration: 0.8 }}
             className="relative"
           >
-            <div className="relative z-10 bg-white rounded-2xl shawdow-2xl p-8 transform rotate-3">
+            <div className="relative z-10 bg-white rounded-2xl shadow-2xl p-8 transform rotate-3">
               <div className="space-y-6">
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
                     <FileText className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-sembold text-gray-900">
+                    <h3 className="font-semibold text-gray-900">
                       Invoice #INV-001
                     </h3>
                     <p className="text-sm text-gray-500">Created Today</p>

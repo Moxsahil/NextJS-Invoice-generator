@@ -14,6 +14,11 @@ export interface Customer {
   totalInvoices?: number;
   totalAmount?: number;
   lastInvoice: string;
+  invoiceStats?: {
+    paid: number;
+    pending: number;
+    draft: number;
+  };
   averageInvoiceValue?: number;
   paymentHistory?: PaymentHistory[];
 }

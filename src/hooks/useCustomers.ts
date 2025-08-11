@@ -1,34 +1,77 @@
+// hooks/useCustomers.ts - Enhanced with real-time sync
 import { Customer } from "@/types/customer";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 export const useCustomer = () => {
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
   useEffect(() => {
     fetchCustomers();
+
+    // Set up polling for real-time updates (every 30 seconds)
+    const interval = setInterval(() => {
+      fetchCustomers(true); // Silent refresh
+    }, 30000);
+
+    // Listen for page visibility changes to refresh when user returns
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchCustomers(true);
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
-      setError(null);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
 
-      const response = await fetch("/api/customers");
+      const response = await fetch("/api/customers", {
+        cache: "no-store", // Ensure fresh data
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
       if (!response.ok) throw new Error("Failed to fetch customers");
 
       const data = await response.json();
-      setCustomers(data);
+
+      // Only update state if data has actually changed
+      setCustomers((prevCustomers) => {
+        const hasChanged =
+          JSON.stringify(prevCustomers) !== JSON.stringify(data);
+        if (hasChanged) {
+          setLastRefresh(new Date());
+          return data;
+        }
+        return prevCustomers;
+      });
     } catch (error) {
       console.error("Error fetching customers:", error);
-      setError(
-        error instanceof Error ? error.message : "Failed to load customers"
-      );
+      if (!silent) {
+        setError(
+          error instanceof Error ? error.message : "Failed to load customers"
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
-  };
+  }, []);
 
   const createCustomer = async (
     customerData: Omit<Customer, "id" | "createdAt" | "updatedAt">
@@ -48,10 +91,15 @@ export const useCustomer = () => {
       }
 
       const newCustomer = await response.json();
+
+      // Optimistically update the customers list
       setCustomers((prev) => [
         ...prev,
         { ...newCustomer, totalInvoices: 0, totalAmount: 0, lastInvoice: null },
       ]);
+
+      // Trigger a refresh to get accurate data
+      setTimeout(() => fetchCustomers(true), 500);
 
       return newCustomer;
     } catch (error) {
@@ -79,6 +127,8 @@ export const useCustomer = () => {
       }
 
       const updatedCustomer = await response.json();
+
+      // Optimistically update the customers list
       setCustomers((prev) =>
         prev.map((customer) =>
           customer.id === customerId
@@ -91,6 +141,9 @@ export const useCustomer = () => {
             : customer
         )
       );
+
+      // Trigger a refresh to get accurate data
+      setTimeout(() => fetchCustomers(true), 500);
 
       return updatedCustomer;
     } catch (error) {
@@ -109,6 +162,8 @@ export const useCustomer = () => {
         const errorData = await response.json();
         throw new Error(errorData.message || "Failed to delete customer");
       }
+
+      // Optimistically remove from list
       setCustomers((prev) =>
         prev.filter((customer) => customer.id !== customerId)
       );
@@ -136,13 +191,43 @@ export const useCustomer = () => {
     );
   };
 
-  const refreshCustomers = () => {
+  const refreshCustomers = useCallback(() => {
     fetchCustomers();
-  };
+  }, [fetchCustomers]);
+
+  // Method to force refresh customer data (called after invoice creation)
+  const forceRefresh = useCallback(() => {
+    fetchCustomers(false);
+  }, [fetchCustomers]);
+
+  // Method to refresh specific customer data
+  const refreshCustomer = useCallback(async (customerId: string) => {
+    try {
+      const response = await fetch(`/api/customers/${customerId}`, {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+
+      if (response.ok) {
+        const updatedCustomer = await response.json();
+        setCustomers((prev) =>
+          prev.map((customer) =>
+            customer.id === customerId ? updatedCustomer : customer
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Error refreshing customer:", error);
+    }
+  }, []);
+
   return {
     customers,
     loading,
     error,
+    lastRefresh,
     createCustomer,
     updateCustomer,
     deleteCustomer,
@@ -150,5 +235,7 @@ export const useCustomer = () => {
     getCustomersByStatus,
     searchCustomers,
     refreshCustomers,
+    forceRefresh,
+    refreshCustomer,
   };
 };
