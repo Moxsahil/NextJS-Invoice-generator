@@ -7,6 +7,7 @@ import Card from "@/components/ui/Card";
 import { useState } from "react";
 import { downloadInvoiceAsPDF } from "@/lib/pdfGenerator";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface InvoiceItem {
   description: string;
@@ -206,13 +207,13 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
       downloadInvoiceAsPDF(invoice);
 
       // Show success message (optional)
-      // You could replace alert with a toast notification
+      // Show success toast notification
       setTimeout(() => {
-        alert(`Invoice ${invoice.invoiceNumber} downloaded successfully!`);
+        toast.success(`Invoice ${invoice.invoiceNumber} downloaded successfully!`);
       }, 1000);
     } catch (error) {
       console.error("Error downloading PDF:", error);
-      alert("Failed to download PDF. Please try again.");
+      toast.error("Failed to download PDF. Please try again.");
     } finally {
       setIsDownloading(false);
     }
@@ -237,14 +238,14 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
       const data = await response.json();
 
       if (response.ok) {
-        alert(`Invoice sent successfully to ${customerEmail}!`);
+        toast.success(`Invoice sent successfully to ${customerEmail}!`);
         setIsEmailModalOpen(false);
       } else {
         throw new Error(data.error || "Failed to send email");
       }
     } catch (error) {
       console.error("Error sending email:", error);
-      alert("Failed to send email. Please try again.");
+      toast.error("Failed to send email. Please try again.");
     } finally {
       setIsEmailSending(false);
     }

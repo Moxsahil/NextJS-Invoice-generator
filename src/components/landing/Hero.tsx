@@ -3,51 +3,10 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Calculator, FileText, Zap } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Hero() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const checkAuthStatus = () => {
-      // Method 1: Check for authentication token in localStorage
-      const token =
-        localStorage.getItem("authToken") ||
-        localStorage.getItem("token") ||
-        localStorage.getItem("accessToken");
-
-      // Method 2: Check for user data in localStorage
-      const userData =
-        localStorage.getItem("user") || localStorage.getItem("userData");
-
-      // Method 3: Check for session/cookies (if you're using cookies)
-      const sessionCookie =
-        document.cookie.includes("session=") ||
-        document.cookie.includes("auth=");
-
-      // Determine if user is logged in based on any of the above
-      const userIsAuthenticated = !!(token || userData || sessionCookie);
-
-      setIsLoggedIn(userIsAuthenticated);
-      setIsLoading(false);
-    };
-
-    // Check auth status on component mount
-    checkAuthStatus();
-
-    // Optional: Listen for storage changes (useful for multi-tab scenarios)
-    const handleStorageChange = () => {
-      checkAuthStatus();
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-
-    // Cleanup listener on unmount
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-    };
-  }, []);
+  const { user, loading } = useAuth();
   return (
     <section className="relative overflow-hidden py-20 lg:py-32">
       <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-purple-600/10 to-pink-600/10" />
@@ -94,12 +53,12 @@ export default function Hero() {
               transition={{ delay: 0.6, duration: 0.8 }}
               className="flex flex-col sm:flex-row gap-4"
             >
-              {isLoading ? (
+              {loading ? (
                 // Show loading state
                 <div className="inline-flex items-center justify-center px-8 py-4 bg-gray-200 animate-pulse rounded-xl">
                   <span className="text-gray-500">Loading...</span>
                 </div>
-              ) : isLoggedIn ? (
+              ) : user ? (
                 // Show dashboard button when logged in
                 <Link
                   href="/dashboard"

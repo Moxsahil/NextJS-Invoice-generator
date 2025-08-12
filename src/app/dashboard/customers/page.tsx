@@ -2,7 +2,9 @@
 
 import CustomerForm from "@/components/customers/CustomerForm";
 import CustomerList from "@/components/customers/CustomerList";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useCustomer } from "@/hooks/useCustomers";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { Customer } from "@/types/customer";
 import { useState, useEffect } from "react";
 
@@ -28,6 +30,7 @@ export default function CustomersPage() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [syncIndicator, setSyncIndicator] = useState(false);
+  const { confirm, isOpen, options, onConfirm, onCancel } = useConfirmDialog();
 
   // Fix hydration issues
   useEffect(() => {
@@ -116,7 +119,15 @@ export default function CustomersPage() {
   };
 
   const handleDeleteCustomer = async (customer: Customer) => {
-    if (window.confirm(`Are you sure you want to delete ${customer.name}?`)) {
+    const confirmed = await confirm({
+      title: "Delete Customer",
+      message: `Are you sure you want to delete ${customer.name}? This action cannot be undone.`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger",
+    });
+
+    if (confirmed) {
       await deleteCustomer(customer.id);
       refreshCustomers();
     }
@@ -357,6 +368,17 @@ export default function CustomersPage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={isOpen}
+        onClose={onCancel}
+        onConfirm={onConfirm}
+        title={options.title}
+        message={options.message}
+        confirmText={options.confirmText}
+        cancelText={options.cancelText}
+        variant={options.variant}
+      />
     </div>
   );
 }

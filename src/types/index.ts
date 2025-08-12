@@ -1,48 +1,8 @@
 export * from "./customer";
 export * from "./analytics";
-
-// Re-export common types
-export interface Invoice {
-  id: string;
-  invoiceNumber: string;
-  customerId: string;
-  customer?: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  issueDate: string;
-  dueDate: string;
-  status: "DRAFT" | "SENT" | "PENDING" | "PAID" | "OVERDUE" | "CANCELLED";
-  subtotal: number;
-  taxRate: number;
-  taxAmount: number;
-  total: number;
-  notes?: string;
-  terms?: string;
-  createdAt: string;
-  updatedAt: string;
-  items: InvoiceItem[];
-}
-
-export interface InvoiceItem {
-  id: string;
-  invoiceId: string;
-  description: string;
-  quantity: number;
-  rate: number;
-  amount: number;
-}
-
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  avatar?: string;
-  role: "admin" | "user";
-  createdAt: string;
-  updatedAt: string;
-}
+export * from "./auth";
+export * from "./invoice";
+export * from "./user";
 
 export interface ApiResponse<T> {
   data: T;
@@ -84,9 +44,7 @@ export interface FormState<T> {
 // Settings types
 export interface AppSettings {
   company: CompanySettings;
-  invoice: InvoiceSettings;
   notifications: NotificationSettings;
-  security: SecuritySettings;
 }
 
 export interface CompanySettings {
@@ -103,18 +61,6 @@ export interface CompanySettings {
   logo?: string;
 }
 
-export interface InvoiceSettings {
-  prefix: string;
-  numberingStart: number;
-  defaultTerms: string;
-  defaultCurrency: string;
-  defaultTaxRate: number;
-  lateFeesEnabled: boolean;
-  lateFeePercentage: number;
-  autoReminders: boolean;
-  reminderDays: number[];
-}
-
 export interface NotificationSettings {
   emailNotifications: boolean;
   smsNotifications: boolean;
@@ -122,14 +68,6 @@ export interface NotificationSettings {
   invoiceOverdue: boolean;
   newCustomer: boolean;
   monthlyReport: boolean;
-}
-
-export interface SecuritySettings {
-  twoFactorAuth: boolean;
-  loginAlerts: boolean;
-  sessionTimeout: number;
-  passwordExpiry: number;
-  allowMultipleSessions: boolean;
 }
 
 // Theme and UI types

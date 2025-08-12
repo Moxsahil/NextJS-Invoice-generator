@@ -12,24 +12,26 @@ interface CustomerDetailsProps {
 
 export default function CustomerDetails({
   customer,
-  invoices,
+  invoices = [], // Provide default empty array
   onRefresh,
 }: CustomerDetailsProps) {
   const [activeTab, setActiveTab] = useState<
     "overview" | "invoices" | "activity"
   >("overview");
 
-  const totalRevenue = invoices
-    .filter((inv) => inv.status === "PAID")
-    .reduce((sum, inv) => sum + inv.total, 0);
+  // Ensure invoices is always an array before calling array methods
+  const getInvoices = Array.isArray(invoices) ? invoices : [];
 
-  const invoicesByStatus = invoices.reduce((acc, invoice) => {
+  const totalRevenue = getInvoices
+    .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
+
+  const invoicesByStatus = getInvoices.reduce((acc, invoice) => {
     acc[invoice.status] = (acc[invoice.status] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
   const averageInvoiceValue =
-    invoices.length > 0 ? totalRevenue / invoices.length : 0;
+    getInvoices.length > 0 ? totalRevenue / getInvoices.length : 0;
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -57,21 +59,27 @@ export default function CustomerDetails({
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-2xl font-bold text-green-600">
-                ${totalRevenue.toLocaleString()}
+                ₹ {(totalRevenue || 0).toLocaleString()}
               </p>
             </div>
             <div className="p-3 bg-green-100 rounded-full">
               <svg
-                className="w-6 h-6 text-green-600"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 512 265.788"
+                className="w-6 h-6"
               >
+                <path fill="#427D2A" d="M0 0h512v265.789H0z" />
                 <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                  fill="#87CC71"
+                  d="M427.35 41.011c-.271 19.77 17.153 37.654 37.661 37.9v105.161c-21.602-.271-39.482 17.153-39.728 40.706H84.65c.271-21.603-17.157-39.487-37.662-39.733V79.884c21.685.246 39.58-17.167 39.826-38.873H427.35z"
+                />
+                <path
+                  fill="#427D2A"
+                  d="M184.56 94.866c21.004-39.459 70.01-54.415 109.468-33.412 39.458 21 54.415 70.01 33.411 109.469-21 39.457-70.009 54.414-109.467 33.411-39.459-21.004-54.415-70.01-33.412-109.468z"
+                />
+                <path
+                  fill="#FEFEFE"
+                  d="M227.768 87.669h56.52c.484 0 .881.406.881.905l-.001 8.613a.895.895 0 01-.881.903h-17.652c2.783 3.237 4.771 7.137 5.673 11.422h11.98c.484 0 .88.404.88.903v8.614c0 .497-.396.905-.88.905h-11.98c-1.081 5.131-3.724 9.715-7.421 13.263-4.843 4.647-11.51 7.529-18.838 7.529v.03h-.815l31.703 36.151c.857.978-.644 3.153-1.317 3.156l-14.657.083-33.844-38.593a1.18 1.18 0 01-.23-1.142v-14.134h19.16v.028c3.445 0 6.568-1.346 8.829-3.512a11.857 11.857 0 002.197-2.859h-29.307c-.484 0-.879-.408-.879-.905v-8.614c0-.499.396-.903.879-.903l29.307-.001a11.781 11.781 0 00-2.197-2.858c-2.261-2.169-5.384-3.514-8.829-3.514v.027l-19.16.001V88.574c0-.499.395-.905.878-.905h.001z"
                 />
               </svg>
             </div>
@@ -85,7 +93,7 @@ export default function CustomerDetails({
                 Total Invoices
               </p>
               <p className="text-2xl font-bold text-blue-600">
-                {invoices.length}
+                {getInvoices.length}
               </p>
             </div>
             <div className="p-3 bg-blue-100 rounded-full">
@@ -113,7 +121,7 @@ export default function CustomerDetails({
                 Avg. Invoice Value
               </p>
               <p className="text-2xl font-bold text-purple-600">
-                ${Math.round(averageInvoiceValue).toLocaleString()}
+                ₹ {Math.round(averageInvoiceValue || 0).toLocaleString()}
               </p>
             </div>
             <div className="p-3 bg-purple-100 rounded-full">
@@ -300,7 +308,7 @@ export default function CustomerDetails({
             <div className="p-6 border-b border-gray-200">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-semibold text-gray-900">
-                  Invoices ({invoices.length})
+                  Invoices ({getInvoices.length})
                 </h3>
                 <button
                   onClick={() =>
@@ -313,7 +321,7 @@ export default function CustomerDetails({
               </div>
             </div>
 
-            {invoices.length > 0 ? (
+            {getInvoices.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead className="bg-gray-50">
@@ -339,7 +347,7 @@ export default function CustomerDetails({
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {invoices.map((invoice) => (
+                    {getInvoices.map((invoice) => (
                       <tr key={invoice.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium text-gray-900">
@@ -353,7 +361,7 @@ export default function CustomerDetails({
                           {new Date(invoice.dueDate).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          ${invoice.total.toLocaleString()}
+                          ₹{(invoice.totalAmount || 0).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
@@ -396,7 +404,7 @@ export default function CustomerDetails({
                   />
                 </svg>
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No invoices yet
+                  No invoices created for this customer
                 </h3>
                 <p className="text-gray-600 mb-4">
                   Create your first invoice for {customer.name} to get started.
@@ -421,7 +429,7 @@ export default function CustomerDetails({
             </h3>
 
             <div className="space-y-4">
-              {invoices
+              {getInvoices
                 .sort(
                   (a, b) =>
                     new Date(b.createdAt).getTime() -
@@ -453,13 +461,13 @@ export default function CustomerDetails({
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 mt-1">
-                        Amount: ${invoice.total.toLocaleString()}
+                        Amount: ₹{(invoice.totalAmount || 0).toLocaleString()}
                       </p>
                     </div>
                   </div>
                 ))}
 
-              {invoices.length === 0 && (
+              {getInvoices.length === 0 && (
                 <div className="text-center py-8">
                   <svg
                     className="mx-auto h-8 w-8 text-gray-300 mb-2"

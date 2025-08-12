@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import EditInvoiceForm from "@/components/invoice/EditInvoiceForm";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface Invoice {
   id: string;
@@ -78,7 +79,7 @@ export default function EditInvoicePage() {
 
       if (response.ok) {
         // Show success message
-        alert("Invoice updated successfully!");
+        toast.success("Invoice updated successfully!");
         // Redirect to invoice detail page
         router.push(`/dashboard/invoices/${params.id}`);
       } else {
@@ -86,7 +87,7 @@ export default function EditInvoicePage() {
       }
     } catch (error) {
       console.error("Error updating invoice:", error);
-      alert("Failed to update invoice. Please try again.");
+      toast.error("Failed to update invoice. Please try again.");
     }
   };
 

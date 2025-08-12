@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 
 interface Customer {
   id: string;
@@ -79,6 +80,7 @@ export default function InvoiceForm() {
       }
     } catch (error) {
       console.error("Error fetching customers:", error);
+      toast.error("Failed to load customers. Please refresh the page.");
     }
   };
 
@@ -128,12 +130,16 @@ export default function InvoiceForm() {
     e.preventDefault();
 
     if (!formData.customerId) {
-      setError("Please select a customer");
+      const errorMessage = "Please select a customer";
+      setError(errorMessage);
+      toast.error(errorMessage);
       return;
     }
 
     if (!selectedCustomer) {
-      setError("Selected customer not found");
+      const errorMessage = "Selected customer not found";
+      setError(errorMessage);
+      toast.error(errorMessage);
       return;
     }
 
@@ -142,7 +148,9 @@ export default function InvoiceForm() {
         (item) => !item.description || item.quantity <= 0 || item.rate <= 0
       )
     ) {
-      setError("Please fill in all item details with valid values");
+      const errorMessage = "Please fill in all item details with valid values";
+      setError(errorMessage);
+      toast.error(errorMessage);
       return;
     }
 
@@ -173,30 +181,8 @@ export default function InvoiceForm() {
       if (response.ok) {
         setSubmissionStatus("success");
 
-        // Show success message with customer update info
-        const successMessage = `Invoice created successfully! Customer data will be updated automatically.`;
-
-        // Create a temporary success notification
-        const notification = document.createElement("div");
-        notification.className =
-          "fixed top-4 left-4 right-4 md:top-4 md:right-4 md:left-auto md:w-auto bg-green-500 text-white px-4 md:px-6 py-3 rounded-lg shadow-lg z-50 transition-all duration-300";
-        notification.innerHTML = `
-          <div class="flex items-center space-x-2">
-            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            <span class="text-sm md:text-base">${successMessage}</span>
-          </div>
-        `;
-        document.body.appendChild(notification);
-
-        // Remove notification after 4 seconds
-        setTimeout(() => {
-          notification.style.opacity = "0";
-          setTimeout(() => {
-            document.body.removeChild(notification);
-          }, 300);
-        }, 4000);
+        // Show success toast notification
+        toast.success("Invoice created successfully! Customer data will be updated automatically.");
 
         // **IMPORTANT**: Trigger customer data refresh
         if (data.customerUpdated && window.dispatchEvent) {
@@ -216,11 +202,15 @@ export default function InvoiceForm() {
         }, 1500);
       } else {
         setSubmissionStatus("error");
-        setError(data.error || "Failed to create invoice");
+        const errorMessage = data.error || "Failed to create invoice";
+        setError(errorMessage);
+        toast.error(errorMessage);
       }
     } catch (error) {
       setSubmissionStatus("error");
-      setError("Network error occurred");
+      const errorMessage = "Network error occurred";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -247,29 +237,6 @@ export default function InvoiceForm() {
             </div>
           )}
 
-          {submissionStatus === "success" && (
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <svg
-                  className="w-5 h-5 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
-                <span className="text-sm sm:text-base">
-                  Invoice created successfully! Customer data is being
-                  updated...
-                </span>
-              </div>
-            </div>
-          )}
 
           {/* Invoice Details */}
           <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
@@ -745,15 +712,6 @@ export default function InvoiceForm() {
             </button>
           </div>
 
-          {/* Real-time sync indicator */}
-          {submissionStatus === "success" && (
-            <div className="text-center text-sm text-gray-600">
-              <div className="flex items-center justify-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span>Updating customer data...</span>
-              </div>
-            </div>
-          )}
         </form>
       </div>
     </div>

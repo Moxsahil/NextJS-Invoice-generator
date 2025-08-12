@@ -6,11 +6,12 @@ const prisma = new PrismaClient();
 // GET /api/customers/[id] - Fetch a specific customer
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const customer = await prisma.customer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         invoices: {
           orderBy: {
@@ -81,9 +82,10 @@ export async function GET(
 // PUT /api/customers/[id] - Update a customer
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const data = await request.json();
 
     // Validate required fields
@@ -96,7 +98,7 @@ export async function PUT(
 
     // Check if customer exists
     const existingCustomer = await prisma.customer.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!existingCustomer) {
@@ -110,7 +112,7 @@ export async function PUT(
     const emailCheck = await prisma.customer.findFirst({
       where: {
         email: data.email,
-        id: { not: params.id },
+        id: { not: id },
         userId: existingCustomer.userId,
       },
     });
@@ -123,7 +125,7 @@ export async function PUT(
     }
 
     const customer = await prisma.customer.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: data.name,
         email: data.email,
@@ -156,12 +158,13 @@ export async function PUT(
 // DELETE /api/customers/[id] - Delete a customer
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     // Check if customer exists
     const existingCustomer = await prisma.customer.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         _count: {
           select: { invoices: true },
@@ -188,7 +191,7 @@ export async function DELETE(
     }
 
     await prisma.customer.delete({
-      where: { id: params.id },
+      where: { id },
     });
 
     return NextResponse.json({ message: "Customer deleted successfully" });

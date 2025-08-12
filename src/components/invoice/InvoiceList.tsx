@@ -6,6 +6,9 @@ import { motion } from "framer-motion";
 import { Eye, Edit, Trash2, FileText, MoreVertical } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import { toast } from "sonner";
 
 interface Invoice {
   id: string;
@@ -31,6 +34,7 @@ export default function InvoiceList({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const { confirm, isOpen, options, onConfirm, onCancel } = useConfirmDialog();
 
   useEffect(() => {
     fetchInvoices();
@@ -54,7 +58,15 @@ export default function InvoiceList({
   };
 
   const deleteInvoice = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this invoice?")) return;
+    const confirmed = await confirm({
+      title: "Delete Invoice",
+      message: "Are you sure you want to delete this invoice? This action cannot be undone.",
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger",
+    });
+
+    if (!confirmed) return;
 
     try {
       const response = await fetch(`/api/invoices/${id}`, {
@@ -63,14 +75,13 @@ export default function InvoiceList({
 
       if (response.ok) {
         setInvoices(invoices.filter((invoice) => invoice.id !== id));
-        // Show success message
-        alert("Invoice deleted successfully!");
+        toast.success("Invoice deleted successfully!");
       } else {
         const data = await response.json();
-        alert(data.error || "Failed to delete invoice");
+        toast.error(data.error || "Failed to delete invoice");
       }
     } catch (err) {
-      alert("Network error occurred while deleting invoice");
+      toast.error("Network error occurred while deleting invoice");
     }
   };
 
@@ -337,6 +348,17 @@ export default function InvoiceList({
           </div>
         </Card>
       </div>
+
+      <ConfirmDialog
+        isOpen={isOpen}
+        onClose={onCancel}
+        onConfirm={onConfirm}
+        title={options.title}
+        message={options.message}
+        confirmText={options.confirmText}
+        cancelText={options.cancelText}
+        variant={options.variant}
+      />
     </>
   );
 }

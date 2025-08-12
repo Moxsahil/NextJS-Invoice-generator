@@ -2,6 +2,7 @@
 
 import { AnalyticsData } from "@/types";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface UseAnalyticsReturn {
   analyticsData: AnalyticsData | null;
@@ -147,7 +148,7 @@ export const useAnalytics = (): UseAnalyticsReturn => {
       document.body.removeChild(jsonLink);
     } catch (error) {
       console.error("Error exporting report:", error);
-      alert("Failed to export report. Please try again.");
+      toast.error("Failed to export report. Please try again.");
     } finally {
       setIsExporting(false);
     }

@@ -6,6 +6,7 @@ import { Plus, Trash2, Save, Calculator, AlertTriangle } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Card from "@/components/ui/Card";
+import { toast } from "sonner";
 
 interface InvoiceItem {
   id?: string;
@@ -196,7 +197,7 @@ export default function EditInvoiceForm({
     e.preventDefault();
 
     if (!validateForm()) {
-      alert("Please fix the errors in the form before saving.");
+      toast.error("Please fix the errors in the form before saving.");
       return;
     }
 

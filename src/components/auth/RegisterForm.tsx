@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Mail, Lock, User } from "lucide-react";
+import { useAuth, useRedirectIfAuthenticated } from "@/hooks/useAuth";
 
 export default function RegisterForm() {
   const [formData, setFormData] = useState({
@@ -15,51 +15,30 @@ export default function RegisterForm() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+  const { register, loading } = useAuth();
+  
+  // Redirect to dashboard if already authenticated
+  useRedirectIfAuthenticated();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
-      setLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
       setError("Password must be at least 6 characters");
-      setLoading(false);
       return;
     }
 
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        router.push("/dashboard");
-      } else {
-        setError(data.error || "Registration failed");
-      }
-    } catch (err) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+    const result = await register(formData.name, formData.email, formData.password);
+    
+    if (!result.success) {
+      setError(result.error || "Registration failed");
     }
   };
 

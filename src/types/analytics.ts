@@ -67,14 +67,6 @@ export interface RevenueBreakdown {
   yearOverYear: number;
 }
 
-export interface CustomerAnalytics {
-  totalCustomers: number;
-  activeCustomers: number;
-  newCustomers: number;
-  topPayingCustomers: TopCustomerData[];
-  customerGrowthRate: number;
-  averageCustomerValue: number;
-}
 
 export interface InvoiceAnalytics {
   totalInvoices: number;

@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import CustomerDetails from "@/components/customers/CustomerDetails";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import { Customer } from "@/types/customer";
 import { Invoice } from "@/types/invoice";
+import { toast } from "sonner";
 
 export default function CustomerDetailPage() {
   const params = useParams();
@@ -13,6 +16,7 @@ export default function CustomerDetailPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { confirm, isOpen, options, onConfirm, onCancel } = useConfirmDialog();
 
   const customerId = params.id as string;
 
@@ -40,10 +44,13 @@ export default function CustomerDetailPage() {
       );
       const invoicesData = invoicesResponse.ok
         ? await invoicesResponse.json()
-        : [];
+        : { invoices: [] };
+
+      // Extract the invoices array from the response
+      const invoicesArray = invoicesData.invoices || [];
 
       setCustomer(customerData);
-      setInvoices(invoicesData);
+      setInvoices(invoicesArray);
     } catch (err) {
       console.error("Error fetching customer details:", err);
       setError(
@@ -65,11 +72,15 @@ export default function CustomerDetailPage() {
   const handleDeleteCustomer = async () => {
     if (!customer) return;
 
-    if (
-      window.confirm(
-        `Are you sure you want to delete ${customer.name}? This action cannot be undone.`
-      )
-    ) {
+    const confirmed = await confirm({
+      title: "Delete Customer",
+      message: `Are you sure you want to delete ${customer.name}? This action cannot be undone.`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger",
+    });
+
+    if (confirmed) {
       try {
         const response = await fetch(`/api/customers/${customerId}`, {
           method: "DELETE",
@@ -80,10 +91,11 @@ export default function CustomerDetailPage() {
           throw new Error(errorData.message || "Failed to delete customer");
         }
 
+        toast.success(`${customer.name} has been deleted successfully`);
         router.push("/dashboard/customers");
       } catch (err) {
         console.error("Error deleting customer:", err);
-        alert(err instanceof Error ? err.message : "Failed to delete customer");
+        toast.error(err instanceof Error ? err.message : "Failed to delete customer");
       }
     }
   };
@@ -206,6 +218,17 @@ export default function CustomerDetailPage() {
         customer={customer}
         invoices={invoices}
         onRefresh={fetchCustomerDetails}
+      />
+
+      <ConfirmDialog
+        isOpen={isOpen}
+        onClose={onCancel}
+        onConfirm={onConfirm}
+        title={options.title}
+        message={options.message}
+        confirmText={options.confirmText}
+        cancelText={options.cancelText}
+        variant={options.variant}
       />
     </div>
   );

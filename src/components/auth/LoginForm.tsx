@@ -2,9 +2,9 @@
 
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
+import { useAuth, useRedirectIfAuthenticated } from "@/hooks/useAuth";
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -13,35 +13,20 @@ export default function LoginForm() {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const router = useRouter();
+  const { login, loading } = useAuth();
+  
+  // Redirect to dashboard if already authenticated
+  useRedirectIfAuthenticated();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError("");
 
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        router.push("/dashboard");
-      } else {
-        setError(data.error || "Login failed");
-      }
-    } catch (error) {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
+    const result = await login(formData.email, formData.password);
+    
+    if (!result.success) {
+      setError(result.error || "Login failed");
     }
   };
 
