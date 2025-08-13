@@ -25,7 +25,7 @@ const navigation = [
   { name: "Create Invoice", href: "/dashboard/invoices/create", icon: Plus },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Customers", href: "/dashboard/customers", icon: Users },
-  // { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {

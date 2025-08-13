@@ -1,40 +1,20 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "../../../generated/prisma";
-
-const prisma = new PrismaClient();
-
-// Helper function to get or create a default user
-async function getOrCreateDefaultUser() {
-  // Try to find any existing user
-  let user = await prisma.user.findFirst();
-
-  // If no user exists, create a default one
-  if (!user) {
-    user = await prisma.user.create({
-      data: {
-        email: `admin_${Date.now()}@invoicegen.local`,
-        name: "System Admin",
-        password: "temp_password", // In production, hash this
-      },
-    });
-  }
-
-  return user.id;
-}
+import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 
 // GET /api/customers - Fetch all customers with real-time invoice data
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const url = new URL(request.url);
-    const userId = url.searchParams.get("userId");
-
-    // If no specific userId is provided, get the default user
-    const targetUserId = userId || (await getOrCreateDefaultUser());
+    // Get the authenticated user ID
+    const userId = await getAuthUser(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Get all customers with their invoices
     const customers = await prisma.customer.findMany({
       where: {
-        userId: targetUserId,
+        userId: userId,
       },
       include: {
         invoices: {
@@ -137,8 +117,14 @@ export async function GET(request: Request) {
 }
 
 // POST /api/customers - Create customer (unchanged)
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
+    // Get the authenticated user ID
+    const userId = await getAuthUser(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const data = await request.json();
 
     // Validate required fields
@@ -171,9 +157,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    // Get or create a user to associate with the customer
-    const userId = await getOrCreateDefaultUser();
 
     // Create customer
     const customer = await prisma.customer.create({

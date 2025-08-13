@@ -13,6 +13,7 @@ import {
   Plus,
   BarChart3,
   Users,
+  Settings2Icon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -30,6 +31,7 @@ const navigation = [
   { name: "Create Invoice", href: "/dashboard/invoices/create", icon: Plus },
   { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
   { name: "Customers", href: "/dashboard/customers", icon: Users },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings2Icon },
 ];
 
 export default function Header({
@@ -129,7 +131,7 @@ export default function Header({
                   </div>
 
                   <Link
-                    href="/settings"
+                    href="/dashboard/settings"
                     className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 flex items-center space-x-2 transition-colors"
                     onClick={() => setDropdownOpen(false)}
                   >
