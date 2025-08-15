@@ -73,21 +73,69 @@ export default function EditInvoiceForm({
     totalAmount: 0,
   });
 
+  const [taxRates, setTaxRates] = useState({
+    sgstRate: 2.5, // Default fallback
+    cgstRate: 2.5, // Default fallback
+  });
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Load tax rates on component mount
+  useEffect(() => {
+    loadTaxRates();
+  }, []);
+
+  // Listen for tax rate updates from settings
+  useEffect(() => {
+    const handleSettingsUpdate = (event: CustomEvent) => {
+      if (event.detail && event.detail.sgstRate !== undefined && event.detail.cgstRate !== undefined) {
+        setTaxRates({
+          sgstRate: event.detail.sgstRate || 2.5,
+          cgstRate: event.detail.cgstRate || 2.5,
+        });
+      }
+    };
+
+    window.addEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+    };
+  }, []);
 
   useEffect(() => {
     calculateTotals();
     checkForChanges();
-  }, [formData, invoice]);
+  }, [formData, invoice, taxRates]);
+
+  const loadTaxRates = async () => {
+    try {
+      const response = await fetch("/api/settings/invoice", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setTaxRates({
+          sgstRate: result.data.sgstRate || 2.5,
+          cgstRate: result.data.cgstRate || 2.5,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading tax rates:", error);
+      // Keep default values on error
+    }
+  };
 
   const calculateTotals = () => {
     const subtotal = formData.items.reduce(
       (sum, item) => sum + item.quantity * item.rate,
       0
     );
-    const sgstAmount = subtotal * 0.025; // 2.5% SGST
-    const cgstAmount = subtotal * 0.025; // 2.5% CGST
+    const sgstAmount = subtotal * (taxRates.sgstRate / 100);
+    const cgstAmount = subtotal * (taxRates.cgstRate / 100);
     const totalAmount = subtotal + sgstAmount + cgstAmount;
 
     setTotals({
@@ -527,7 +575,7 @@ export default function EditInvoiceForm({
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">SGST (2.5%):</span>
+              <span className="text-gray-600">SGST ({taxRates.sgstRate}%):</span>
               <span className="font-semibold">
                 ₹
                 {totals.sgstAmount.toLocaleString("en-IN", {
@@ -536,7 +584,7 @@ export default function EditInvoiceForm({
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">CGST (2.5%):</span>
+              <span className="text-gray-600">CGST ({taxRates.cgstRate}%):</span>
               <span className="font-semibold">
                 ₹
                 {totals.cgstAmount.toLocaleString("en-IN", {

@@ -1,13 +1,14 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Download, Send, Edit, Printer, Mail, X } from "lucide-react";
+import { Download, Send, Edit, Printer, Mail, X, Building2, CreditCard } from "lucide-react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { downloadInvoiceAsPDF } from "@/lib/pdfGenerator";
 import Link from "next/link";
 import { toast } from "sonner";
+import QRCode from "qrcode";
 
 interface InvoiceItem {
   description: string;
@@ -183,6 +184,28 @@ interface Invoice {
   items: InvoiceItem[];
 }
 
+interface InvoiceSettings {
+  includeQRCode: boolean;
+  showBankDetails: boolean;
+  showCompanyLogo: boolean;
+  showPaymentTerms: boolean;
+  enableReminders: boolean;
+  sgstRate: number;
+  cgstRate: number;
+  defaultTerms: string;
+  defaultNotes: string;
+  bankName: string;
+  accountNumber: string;
+  accountName: string;
+  ifscCode: string;
+  upiId: string;
+  merchantName: string;
+}
+
+interface CompanyDetails {
+  companyLogo?: string;
+}
+
 interface InvoicePreviewProps {
   invoice: Invoice;
 }
@@ -191,6 +214,146 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [isEmailSending, setIsEmailSending] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+  const [invoiceSettings, setInvoiceSettings] = useState<InvoiceSettings>({
+    includeQRCode: true,
+    showBankDetails: true,
+    showCompanyLogo: true,
+    showPaymentTerms: true,
+    enableReminders: false,
+    sgstRate: 2.5,
+    cgstRate: 2.5,
+    defaultTerms: "Payment is due within 30 days of invoice date. Late payments may be subject to a 1.5% monthly service charge.",
+    defaultNotes: "Thank you for your business!",
+    bankName: "",
+    accountNumber: "",
+    accountName: "",
+    ifscCode: "",
+    upiId: "",
+    merchantName: "",
+  });
+  const [companyDetails, setCompanyDetails] = useState<CompanyDetails>({});
+
+  // Load invoice settings and company details on component mount
+  useEffect(() => {
+    loadInvoiceSettings();
+    loadCompanyDetails();
+  }, []);
+
+  // Generate QR code when settings change
+  useEffect(() => {
+    if (invoiceSettings.includeQRCode && invoiceSettings.upiId) {
+      generateQRCode();
+    } else if (invoiceSettings.includeQRCode && !invoiceSettings.upiId) {
+      // Clear QR code if includeQRCode is true but no UPI ID
+      setQrCodeDataUrl("");
+    }
+  }, [invoiceSettings.includeQRCode, invoiceSettings.upiId, invoiceSettings.merchantName, invoice.totalAmount, invoice.invoiceNumber, invoice.companyName]);
+
+  // Retry QR generation if settings are loaded but QR code is missing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (invoiceSettings.includeQRCode && invoiceSettings.upiId && !qrCodeDataUrl) {
+        console.log("Retrying QR code generation...");
+        generateQRCode();
+      }
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [invoiceSettings, qrCodeDataUrl]);
+
+  // Listen for settings updates
+  useEffect(() => {
+    const handleSettingsUpdate = (event: CustomEvent) => {
+      if (event.detail) {
+        setInvoiceSettings(prev => ({
+          ...prev,
+          ...event.detail
+        }));
+      }
+    };
+
+    window.addEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+    };
+  }, []);
+
+  const loadInvoiceSettings = async () => {
+    try {
+      console.log("Loading invoice settings...");
+      const response = await fetch("/api/settings/invoice", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Invoice settings loaded:", result.data);
+        setInvoiceSettings(result.data);
+      } else {
+        console.error("Failed to load invoice settings:", response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error("Error loading invoice settings:", error);
+    }
+  };
+
+  const loadCompanyDetails = async () => {
+    try {
+      const response = await fetch("/api/user/company", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setCompanyDetails({
+          companyLogo: result.data.companyLogo,
+        });
+      }
+    } catch (error) {
+      console.error("Error loading company details:", error);
+    }
+  };
+
+  const generateQRCode = async () => {
+    try {
+      console.log("Generate QR Code called with settings:", {
+        includeQRCode: invoiceSettings.includeQRCode,
+        upiId: invoiceSettings.upiId,
+        merchantName: invoiceSettings.merchantName
+      });
+
+      if (!invoiceSettings.upiId) {
+        console.log("UPI ID not configured, skipping QR code generation");
+        setQrCodeDataUrl(""); // Clear any existing QR code
+        return;
+      }
+
+      // Create UPI payment URL for real payments
+      const upiUrl = `upi://pay?pa=${invoiceSettings.upiId}&pn=${encodeURIComponent(invoiceSettings.merchantName || invoice.companyName)}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(`Payment for Invoice ${invoice.invoiceNumber}`)}`;
+      
+      console.log("Generating QR code for UPI URL:", upiUrl);
+
+      const qrDataUrl = await QRCode.toDataURL(upiUrl, {
+        width: 150,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#FFFFFF'
+        },
+        errorCorrectionLevel: 'M'
+      });
+      
+      console.log("QR Code generated successfully");
+      setQrCodeDataUrl(qrDataUrl);
+    } catch (error) {
+      console.error("Error generating UPI QR code:", error);
+      setQrCodeDataUrl(""); // Clear QR code on error
+    }
+  };
 
   const handlePrint = () => {
     window.print();
@@ -203,8 +366,15 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
       // Small delay to show loading state
       await new Promise((resolve) => setTimeout(resolve, 500));
 
+      // Prepare QR options
+      const qrOptions = {
+        includeQRCode: invoiceSettings.includeQRCode,
+        upiId: invoiceSettings.upiId,
+        merchantName: invoiceSettings.merchantName
+      };
+
       // Generate and download PDF
-      downloadInvoiceAsPDF(invoice);
+      await downloadInvoiceAsPDF(invoice, qrOptions);
 
       // Show success message (optional)
       // Show success toast notification
@@ -232,6 +402,7 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
           invoice,
           customerEmail,
           companyEmail: "your-company@example.com",
+          enableReminders: invoiceSettings.enableReminders,
         }),
       });
 
@@ -239,6 +410,9 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
 
       if (response.ok) {
         toast.success(`Invoice sent successfully to ${customerEmail}!`);
+        if (invoiceSettings.enableReminders) {
+          toast.info("Payment reminders have been scheduled automatically.");
+        }
         setIsEmailModalOpen(false);
       } else {
         throw new Error(data.error || "Failed to send email");
@@ -303,6 +477,16 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
           {/* All your existing invoice preview JSX remains exactly the same */}
           {/* Header - Responsive */}
           <div className="text-center mb-6 sm:mb-8 border-b-2 border-blue-600 pb-4 sm:pb-6">
+            {/* Company Logo - Conditional */}
+            {invoiceSettings.showCompanyLogo && companyDetails.companyLogo && (
+              <div className="mb-4">
+                <img
+                  src={companyDetails.companyLogo}
+                  alt="Company Logo"
+                  className="h-16 sm:h-20 lg:h-24 mx-auto object-contain"
+                />
+              </div>
+            )}
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
               INVOICE
             </h1>
@@ -452,11 +636,11 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
                   <span>₹{invoice.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs sm:text-sm text-gray-600">
-                  <span>SGST (2.5%):</span>
+                  <span>SGST ({invoiceSettings.sgstRate}%):</span>
                   <span>₹{invoice.sgstAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center text-xs sm:text-sm text-gray-600">
-                  <span>CGST (2.5%):</span>
+                  <span>CGST ({invoiceSettings.cgstRate}%):</span>
                   <span>₹{invoice.cgstAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center border-t-2 border-blue-600 pt-2">
@@ -471,15 +655,100 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
             </div>
           </div>
 
-          {/* Footer - Responsive */}
-          <div className="text-center mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-gray-200">
-            <p className="text-xs sm:text-sm text-gray-600">
-              Thank you for your business!
-            </p>
-            <p className="text-xs sm:text-sm text-gray-500 mt-2">
-              This is a computer-generated invoice and does not require a
-              signature.
-            </p>
+          {/* Bank Details - Conditional */}
+          {invoiceSettings.showBankDetails && (
+            <div className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Building2 className="w-5 h-5 mr-2 text-blue-600" />
+                Bank Details
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4 sm:p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="font-semibold text-gray-900 mb-1">Bank Name:</p>
+                    <p className="text-gray-700">{invoiceSettings.bankName || "Not configured"}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 mb-1">Account Number:</p>
+                    <p className="text-gray-700">{invoiceSettings.accountNumber || "Not configured"}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 mb-1">IFSC Code:</p>
+                    <p className="text-gray-700">{invoiceSettings.ifscCode || "Not configured"}</p>
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900 mb-1">Account Holder:</p>
+                    <p className="text-gray-700">{invoiceSettings.accountName || invoice.companyName}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment Terms - Conditional */}
+          {invoiceSettings.showPaymentTerms && (
+            <div className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <CreditCard className="w-5 h-5 mr-2 text-blue-600" />
+                Payment Terms & Conditions
+              </h3>
+              <div className="bg-blue-50 rounded-lg p-4 sm:p-6">
+                <div className="text-sm text-gray-700 whitespace-pre-line">
+                  {invoiceSettings.defaultTerms}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Footer with QR Code - Responsive */}
+          <div className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-gray-200">
+            <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
+              <div className="text-center md:text-left">
+                <p className="text-xs sm:text-sm text-gray-600">
+                  {invoiceSettings.defaultNotes}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-500 mt-2">
+                  This is a computer-generated invoice and does not require a
+                  signature.
+                </p>
+              </div>
+
+              {/* QR Code - Conditional */}
+              {invoiceSettings.includeQRCode && (
+                <div className="text-center">
+                  {qrCodeDataUrl ? (
+                    <>
+                      <p className="text-xs sm:text-sm text-gray-600 mb-2">
+                        Scan to Pay ₹{invoice.totalAmount.toFixed(2)}
+                      </p>
+                      <img
+                        src={qrCodeDataUrl}
+                        alt="UPI Payment QR Code"
+                        className="w-20 h-20 sm:w-24 sm:h-24 mx-auto border border-gray-200 rounded"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        UPI Payment
+                      </p>
+                    </>
+                  ) : invoiceSettings.upiId ? (
+                    <div className="text-xs text-gray-500">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-gray-100 border border-gray-200 rounded flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600"></div>
+                      </div>
+                      <p className="mt-2">Generating QR Code...</p>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-gray-500">
+                      <div className="w-20 h-20 sm:w-24 sm:h-24 mx-auto bg-gray-50 border border-gray-200 rounded flex items-center justify-center">
+                        <p className="text-center text-xs">No UPI</p>
+                      </div>
+                      <p className="mt-2">Configure UPI ID in settings</p>
+                      <p>to enable QR payments</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>

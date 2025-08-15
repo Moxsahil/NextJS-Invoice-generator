@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
+import QRCode from "qrcode";
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +24,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch invoice settings to check if QR code should be included
+    const invoiceSettings = await getInvoiceSettings(invoice.userId);
+    
+    // Generate QR code if enabled
+    let qrCodeDataUrl = '';
+    if (invoiceSettings?.includeQRCode && invoiceSettings?.upiId) {
+      try {
+        const upiUrl = `upi://pay?pa=${invoiceSettings.upiId}&pn=${encodeURIComponent(invoiceSettings.merchantName || invoice.companyName)}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(`Payment for Invoice ${invoice.invoiceNumber}`)}`;
+        qrCodeDataUrl = await QRCode.toDataURL(upiUrl, {
+          width: 150,
+          margin: 2,
+          color: {
+            dark: '#000000',
+            light: '#FFFFFF'
+          },
+          errorCorrectionLevel: 'M'
+        });
+      } catch (error) {
+        console.error("Error generating QR code for PDF:", error);
+      }
+    }
+
     // Launch Puppeteer with optimized settings
     const browser = await puppeteer.launch({
       headless: true,
@@ -42,7 +63,7 @@ export async function POST(request: NextRequest) {
     await page.setViewport({ width: 1200, height: 800 });
 
     // Create HTML content for the invoice
-    const htmlContent = generateInvoiceHTML(invoice);
+    const htmlContent = generateInvoiceHTML(invoice, invoiceSettings, qrCodeDataUrl);
 
     await page.setContent(htmlContent, {
       waitUntil: ["load", "networkidle0"],
@@ -65,16 +86,17 @@ export async function POST(request: NextRequest) {
     await browser.close();
 
     // Return PDF as downloadable file
-    return new NextResponse(pdfBuffer, {
+    const headers = new Headers();
+    headers.set("Content-Type", "application/pdf");
+    headers.set("Content-Disposition", `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`);
+    headers.set("Content-Length", pdfBuffer.length.toString());
+    headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    headers.set("Pragma", "no-cache");
+    headers.set("Expires", "0");
+
+    return new NextResponse(pdfBuffer as any, {
       status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`,
-        "Content-Length": pdfBuffer.length.toString(),
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        Pragma: "no-cache",
-        Expires: "0",
-      },
+      headers: headers,
     });
   } catch (error) {
     console.error("Error generating PDF:", error);
@@ -92,7 +114,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Enhanced HTML template for better PDF rendering
-function generateInvoiceHTML(invoice: any): string {
+function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDataUrl: string = ''): string {
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -444,13 +466,13 @@ function generateInvoiceHTML(invoice: any): string {
                 })}</span>
               </div>
               <div class="total-line">
-                <span>SGST (2.5%):</span>
+                <span>SGST (${invoice.subtotal > 0 ? ((invoice.sgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5"}%):</span>
                 <span>₹${invoice.sgstAmount.toLocaleString("en-IN", {
                   minimumFractionDigits: 2,
                 })}</span>
               </div>
               <div class="total-line">
-                <span>CGST (2.5%):</span>
+                <span>CGST (${invoice.subtotal > 0 ? ((invoice.cgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5"}%):</span>
                 <span>₹${invoice.cgstAmount.toLocaleString("en-IN", {
                   minimumFractionDigits: 2,
                 })}</span>
@@ -478,18 +500,37 @@ function generateInvoiceHTML(invoice: any): string {
           </div>
 
           <div class="footer">
-            <p class="footer-message">Thank you for your business!</p>
-            <p class="footer-note">This is a computer-generated invoice and does not require a signature.</p>
-            <p class="footer-note">Generated on ${new Date().toLocaleDateString(
-              "en-IN",
-              {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }
-            )}</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+              <div style="flex: 1; text-align: left;">
+                <p class="footer-message">Thank you for your business!</p>
+                <p class="footer-note">This is a computer-generated invoice and does not require a signature.</p>
+                <p class="footer-note">Generated on ${new Date().toLocaleDateString(
+                  "en-IN",
+                  {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }
+                )}</p>
+              </div>
+              ${qrCodeDataUrl && invoiceSettings?.includeQRCode ? `
+                <div style="text-align: center; margin-left: 20px;">
+                  <p style="font-size: 12px; color: #64748b; margin-bottom: 8px;">
+                    Scan to Pay ₹${invoice.totalAmount.toFixed(2)}
+                  </p>
+                  <img
+                    src="${qrCodeDataUrl}"
+                    alt="UPI Payment QR Code"
+                    style="width: 96px; height: 96px; border: 1px solid #e2e8f0; border-radius: 4px;"
+                  />
+                  <p style="font-size: 10px; color: #94a3b8; margin-top: 4px;">
+                    UPI Payment
+                  </p>
+                </div>
+              ` : ''}
+            </div>
           </div>
         </div>
       </div>
@@ -508,6 +549,21 @@ function getStatusColor(status: string): string {
     cancelled: "#ef4444",
   };
   return colors[status.toLowerCase()] || "#6b7280";
+}
+
+// Database query function to get invoice settings
+async function getInvoiceSettings(userId: string) {
+  try {
+    const settings = await prisma.invoiceSettings.findUnique({
+      where: {
+        userId: userId,
+      },
+    });
+    return settings;
+  } catch (error) {
+    console.error("Error fetching invoice settings:", error);
+    return null;
+  }
 }
 
 // Database query function using Prisma

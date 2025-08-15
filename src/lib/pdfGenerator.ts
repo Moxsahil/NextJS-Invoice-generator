@@ -1,5 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 
 interface InvoiceItem {
   description: string;
@@ -26,6 +27,11 @@ interface Invoice {
   totalAmount: number;
   status: string;
   items: InvoiceItem[];
+}
+
+interface TaxRates {
+  sgstRate?: number;
+  cgstRate?: number;
 }
 
 export class ProfessionalInvoicePDF {
@@ -239,8 +245,12 @@ export class ProfessionalInvoicePDF {
 
     currentTotalY += lineHeight;
 
+    // Calculate tax rates dynamically
+    const sgstRate = invoice.subtotal > 0 ? ((invoice.sgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5";
+    const cgstRate = invoice.subtotal > 0 ? ((invoice.cgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5";
+
     // SGST
-    this.doc.text("SGST (2.5%):", totalsX, currentTotalY);
+    this.doc.text(`SGST (${sgstRate}%):`, totalsX, currentTotalY);
     this.doc.text(
       `₹${invoice.sgstAmount.toFixed(2)}`,
       totalsX + 140,
@@ -251,7 +261,7 @@ export class ProfessionalInvoicePDF {
     currentTotalY += lineHeight;
 
     // CGST
-    this.doc.text("CGST (2.5%):", totalsX, currentTotalY);
+    this.doc.text(`CGST (${cgstRate}%):`, totalsX, currentTotalY);
     this.doc.text(
       `₹${invoice.cgstAmount.toFixed(2)}`,
       totalsX + 140,
@@ -283,14 +293,45 @@ export class ProfessionalInvoicePDF {
     this.currentY += 140;
   }
 
-  private addFooter() {
+  private async addFooter(invoice: Invoice, qrCodeDataUrl?: string) {
     const footerY = this.pageHeight - 100;
 
-    // Thank you message
+    // Footer line
+    this.doc.setDrawColor(209, 213, 219);
+    this.doc.setLineWidth(0.5);
+    this.doc.line(40, footerY - 20, this.pageWidth - 40, footerY - 20);
+
+    // If QR code is provided, add it to the right side
+    if (qrCodeDataUrl) {
+      try {
+        // Add QR code on the right side
+        const qrSize = 60;
+        const qrX = this.pageWidth - qrSize - 40;
+        const qrY = footerY - 15;
+        
+        this.doc.addImage(qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+        
+        // QR code label
+        this.doc.setFontSize(8);
+        this.doc.setFont("helvetica", "normal");
+        this.doc.setTextColor(100, 116, 139);
+        this.doc.text(`Scan to Pay ₹${invoice.totalAmount.toFixed(2)}`, qrX + qrSize/2, qrY + qrSize + 10, {
+          align: "center",
+        });
+        this.doc.text("UPI Payment", qrX + qrSize/2, qrY + qrSize + 20, {
+          align: "center",
+        });
+      } catch (error) {
+        console.error("Error adding QR code to PDF:", error);
+      }
+    }
+
+    // Thank you message (left side or center if no QR code)
+    const messageX = qrCodeDataUrl ? this.pageWidth / 3 : this.pageWidth / 2;
     this.doc.setFontSize(16);
     this.doc.setFont("helvetica", "bold");
     this.doc.setTextColor(37, 99, 235);
-    this.doc.text("Thank you for your business!", this.pageWidth / 2, footerY, {
+    this.doc.text("Thank you for your business!", messageX, footerY, {
       align: "center",
     });
 
@@ -300,15 +341,10 @@ export class ProfessionalInvoicePDF {
     this.doc.setTextColor(100, 116, 139);
     this.doc.text(
       "This is a computer-generated invoice and does not require a signature.",
-      this.pageWidth / 2,
+      messageX,
       footerY + 25,
       { align: "center" }
     );
-
-    // Footer line
-    this.doc.setDrawColor(209, 213, 219);
-    this.doc.setLineWidth(0.5);
-    this.doc.line(40, footerY - 20, this.pageWidth - 40, footerY - 20);
   }
 
   private addStatusBadge(status: string) {
@@ -346,8 +382,27 @@ export class ProfessionalInvoicePDF {
     return this.doc.splitTextToSize(text, maxWidth);
   }
 
-  public generatePDF(invoice: Invoice): void {
+  public async generatePDF(invoice: Invoice, options?: { includeQRCode?: boolean; upiId?: string; merchantName?: string }): Promise<void> {
     try {
+      // Generate QR code if options are provided
+      let qrCodeDataUrl = '';
+      if (options?.includeQRCode && options?.upiId) {
+        try {
+          const upiUrl = `upi://pay?pa=${options.upiId}&pn=${encodeURIComponent(options.merchantName || invoice.companyName)}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(`Payment for Invoice ${invoice.invoiceNumber}`)}`;
+          qrCodeDataUrl = await QRCode.toDataURL(upiUrl, {
+            width: 150,
+            margin: 2,
+            color: {
+              dark: '#000000',
+              light: '#FFFFFF'
+            },
+            errorCorrectionLevel: 'M'
+          });
+        } catch (qrError) {
+          console.error("Error generating QR code:", qrError);
+        }
+      }
+
       // Add all sections
       this.addHeader(invoice);
       this.addCompanyInfo(invoice);
@@ -355,7 +410,7 @@ export class ProfessionalInvoicePDF {
       this.addStatusBadge(invoice.status);
       this.addItemsTable(invoice);
       this.addTotalsSection(invoice);
-      this.addFooter();
+      await this.addFooter(invoice, qrCodeDataUrl);
 
       // Generate filename
       const fileName = `Invoice_${
@@ -372,10 +427,10 @@ export class ProfessionalInvoicePDF {
 }
 
 // Export function for easy use
-export const downloadInvoiceAsPDF = (invoice: Invoice) => {
+export const downloadInvoiceAsPDF = async (invoice: Invoice, qrOptions?: { includeQRCode?: boolean; upiId?: string; merchantName?: string }) => {
   try {
     const pdfGenerator = new ProfessionalInvoicePDF();
-    pdfGenerator.generatePDF(invoice);
+    await pdfGenerator.generatePDF(invoice, qrOptions);
   } catch (error) {
     console.error("Error in downloadInvoiceAsPDF:", error);
     throw error;

@@ -34,8 +34,12 @@ export default function InvoiceForm() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(
     null
   );
+  const [taxRates, setTaxRates] = useState({
+    sgstRate: 2.5, // Default fallback
+    cgstRate: 2.5, // Default fallback
+  });
   const [formData, setFormData] = useState({
-    invoiceNumber: `INV-${Date.now()}`,
+    invoiceNumber: "INV-0001", // Temporary, will be loaded from settings
     companyName: "",
     companyGSTIN: "",
     companyAddress: "",
@@ -55,10 +59,114 @@ export default function InvoiceForm() {
     "idle" | "success" | "error"
   >("idle");
 
-  // Load customers on component mount
+  // Load customers, company data, and invoice settings on component mount
   useEffect(() => {
     fetchCustomers();
+    loadCompanyData();
+    loadInvoiceSettings();
   }, []);
+
+  // Listen for invoice settings updates
+  useEffect(() => {
+    const handleSettingsUpdate = (event: CustomEvent) => {
+      if (event.detail && event.detail.sgstRate !== undefined && event.detail.cgstRate !== undefined) {
+        setTaxRates({
+          sgstRate: event.detail.sgstRate || 2.5,
+          cgstRate: event.detail.cgstRate || 2.5,
+        });
+      }
+    };
+
+    window.addEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+    
+    return () => {
+      window.removeEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+    };
+  }, []);
+
+  const loadCompanyData = async () => {
+    try {
+      const response = await fetch("/api/user/company", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const companyData = result.data;
+        
+        // Auto-populate company fields
+        setFormData(prev => ({
+          ...prev,
+          companyName: companyData.companyName || "",
+          companyGSTIN: companyData.gstin || "",
+          companyAddress: companyData.address || "",
+          companyPhone: companyData.phone || "",
+        }));
+      } else {
+        console.error("Failed to load company data");
+      }
+    } catch (error) {
+      console.error("Error loading company data:", error);
+      // Don't show toast error for company data as it's not critical
+    }
+  };
+
+  const loadInvoiceSettings = async () => {
+    try {
+      const response = await fetch("/api/settings/invoice", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const settings = result.data;
+        
+        // Check if user has customized invoice settings (not using defaults)
+        const hasCustomSettings = settings.prefix !== "INV" || settings.numberingStart !== 1;
+        
+        let invoiceNumber;
+        if (hasCustomSettings) {
+          // Use custom settings format
+          invoiceNumber = `${settings.prefix}-${String(settings.numberingStart).padStart(4, '0')}${settings.suffix || ''}`;
+        } else {
+          // Use default Date.now() format
+          invoiceNumber = `INV-${Date.now()}`;
+        }
+        
+        // Update due date based on default due days
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + settings.defaultDueDays);
+        
+        // Update tax rates from settings with fallback to defaults
+        setTaxRates({
+          sgstRate: settings.sgstRate || 2.5,
+          cgstRate: settings.cgstRate || 2.5,
+        });
+        
+        setFormData(prev => ({
+          ...prev,
+          invoiceNumber: invoiceNumber,
+          dueDate: dueDate.toISOString().split('T')[0],
+        }));
+      } else {
+        console.error("Failed to load invoice settings");
+        // Fallback to Date.now() if settings fail to load
+        setFormData(prev => ({
+          ...prev,
+          invoiceNumber: `INV-${Date.now()}`,
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading invoice settings:", error);
+      // Fallback to Date.now() if there's an error
+      setFormData(prev => ({
+        ...prev,
+        invoiceNumber: `INV-${Date.now()}`,
+      }));
+    }
+  };
 
   // Pre-select customer if customerId is in URL
   useEffect(() => {
@@ -119,8 +227,8 @@ export default function InvoiceForm() {
 
   const calculateTotals = () => {
     const subtotal = items.reduce((sum, item) => sum + item.amount, 0);
-    const sgstAmount = subtotal * 0.025;
-    const cgstAmount = subtotal * 0.025;
+    const sgstAmount = subtotal * (taxRates.sgstRate / 100);
+    const cgstAmount = subtotal * (taxRates.cgstRate / 100);
     const totalAmount = subtotal + sgstAmount + cgstAmount;
 
     return { subtotal, sgstAmount, cgstAmount, totalAmount };
@@ -183,6 +291,13 @@ export default function InvoiceForm() {
 
         // Show success toast notification
         toast.success("Invoice created successfully! Customer data will be updated automatically.");
+        
+        // Show reminder notification if enabled
+        if (data.remindersScheduled) {
+          setTimeout(() => {
+            toast.info("Payment reminders have been scheduled automatically.");
+          }, 1000);
+        }
 
         // **IMPORTANT**: Trigger customer data refresh
         if (data.customerUpdated && window.dispatchEvent) {
@@ -670,11 +785,11 @@ export default function InvoiceForm() {
                 <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm sm:text-base">
-                <span className="font-medium">SGST (2.5%):</span>
+                <span className="font-medium">SGST ({taxRates.sgstRate}%):</span>
                 <span className="font-semibold">₹{sgstAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm sm:text-base">
-                <span className="font-medium">CGST (2.5%):</span>
+                <span className="font-medium">CGST ({taxRates.cgstRate}%):</span>
                 <span className="font-semibold">₹{cgstAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg sm:text-xl border-t border-gray-300 pt-3">

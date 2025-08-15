@@ -129,13 +129,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate totals
+    // Get user's settings for tax rates and reminders
+    const userSettings = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        sgstRate: true,
+        cgstRate: true,
+        invoiceReminders: true,
+        companyEmail: true,
+      },
+    });
+
+    const sgstRate = userSettings?.sgstRate || 2.5;
+    const cgstRate = userSettings?.cgstRate || 2.5;
+
+    // Calculate totals using user's configured tax rates
     const subtotal = data.items.reduce(
       (sum, item) => sum + item.quantity * item.rate,
       0
     );
-    const sgstAmount = subtotal * 0.025;
-    const cgstAmount = subtotal * 0.025;
+    const sgstAmount = subtotal * (sgstRate / 100);
+    const cgstAmount = subtotal * (cgstRate / 100);
     const totalAmount = subtotal + sgstAmount + cgstAmount;
 
     // Create invoice in a transaction to ensure data consistency
@@ -188,6 +202,35 @@ export async function POST(request: NextRequest) {
       return invoice;
     });
 
+    // Check if payment reminders are enabled and schedule them
+    if (userSettings?.invoiceReminders && customer.email) {
+      try {
+        // Schedule payment reminders
+        const reminderResponse = await fetch(
+          `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/api/payment-reminders`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Cookie": request.headers.get("cookie") || "",
+            },
+            body: JSON.stringify({
+              invoiceId: result.id,
+              customerEmail: customer.email,
+              dueDate: data.dueDate,
+            }),
+          }
+        );
+
+        if (reminderResponse.ok) {
+          console.log("Payment reminders scheduled successfully");
+        }
+      } catch (error) {
+        console.error("Failed to schedule payment reminders:", error);
+        // Don't fail the invoice creation if reminders fail
+      }
+    }
+
     // **IMPORTANT**: Send a signal to refresh customer data
     // This could be enhanced with WebSockets, but for now we use a timestamp approach
     const responseData = {
@@ -195,6 +238,7 @@ export async function POST(request: NextRequest) {
       customerUpdated: true, // Flag to indicate customer data should be refreshed
       customerId: data.customerId,
       timestamp: new Date().toISOString(),
+      remindersScheduled: userSettings?.invoiceReminders && customer.email ? true : false,
     };
 
     return NextResponse.json(responseData, { status: 201 });

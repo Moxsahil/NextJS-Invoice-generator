@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "../../../../generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
 
 // GET /api/customers/[id] - Fetch a specific customer
 export async function GET(

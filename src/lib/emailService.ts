@@ -293,14 +293,14 @@ export class InvoiceEmailService {
                         )}</span>
                     </div>
                     <div class="summary-row">
-                        <span class="summary-label">SGST (2.5%):</span>
+                        <span class="summary-label">SGST (${invoice.subtotal > 0 ? ((invoice.sgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5"}%):</span>
                         <span class="summary-value">₹${invoice.sgstAmount.toLocaleString(
                           "en-IN",
                           { minimumFractionDigits: 2 }
                         )}</span>
                     </div>
                     <div class="summary-row">
-                        <span class="summary-label">CGST (2.5%):</span>
+                        <span class="summary-label">CGST (${invoice.subtotal > 0 ? ((invoice.cgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5"}%):</span>
                         <span class="summary-value">₹${invoice.cgstAmount.toLocaleString(
                           "en-IN",
                           { minimumFractionDigits: 2 }

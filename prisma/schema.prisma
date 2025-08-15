@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../src/generated/prisma"
@@ -14,24 +8,65 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// generator client {
-//   provider = "prisma-client-js"
-// }
-
-// datasource db {
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
-// }
-
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  name      String
-  password  String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  invoices  Invoice[]
-  customers Customer[]
+  id                   String     @id @default(cuid())
+  email                String     @unique
+  name                 String
+  password             String
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  accountName          String?
+  accountNumber        String?
+  bankBranch           String?
+  bankName             String?
+  browserNotifications Boolean    @default(true)
+  colorScheme          String     @default("blue")
+  companyAddress       String?
+  companyCity          String?
+  companyCountry       String?    @default("India")
+  companyEmail         String?
+  companyGSTIN         String?
+  companyLogo          String?
+  companyName          String?
+  companyPhone         String?
+  companyState         String?
+  companyWebsite       String?
+  companyZipCode       String?
+  defaultCurrency      String     @default("INR")
+  defaultPaymentTerms  String     @default("30 days")
+  defaultTaxRate       Float      @default(18.0)
+  sgstRate             Float      @default(9.0)
+  cgstRate             Float      @default(9.0)
+  igstRate             Float      @default(18.0)
+  emailNotifications   Boolean    @default(true)
+  fontSize             String     @default("medium")
+  ifscCode             String?
+  invoiceFooter        String?
+  invoicePrefix        String     @default("INV")
+  invoiceSuffix        String?
+  invoiceReminders     Boolean    @default(true)
+  invoiceStartNumber   Int        @default(1001)
+  invoiceResetNumbering String    @default("never")
+  includeQRCode        Boolean    @default(true)
+  showBankDetails      Boolean    @default(true)
+  showCompanyLogo      Boolean    @default(true)
+  showPaymentTerms     Boolean    @default(true)
+  autoSendEmail        Boolean    @default(false)
+  emailTemplate        String     @default("professional")
+  defaultTerms         String?
+  language             String?    @default("en")
+  marketingEmails      Boolean    @default(false)
+  passwordLastChanged  DateTime?
+  paymentAlerts        Boolean    @default(true)
+  phone                String?
+  sessionTimeout       Int        @default(30)
+  theme                String     @default("light")
+  timezone             String?    @default("Asia/Kolkata")
+  twoFactorEnabled     Boolean    @default(false)
+  upiId                String?
+  merchantName         String?
+  customers            Customer[]
+  invoices             Invoice[]
 }
 
 model Invoice {
@@ -55,9 +90,9 @@ model Invoice {
   updatedAt       DateTime      @updatedAt
   userId          String
   customerId      String?
+  customer        Customer?     @relation(fields: [customerId], references: [id])
   user            User          @relation(fields: [userId], references: [id])
   items           InvoiceItem[]
-  customer        Customer?     @relation(fields: [customerId], references: [id], onDelete: SetNull)
 }
 
 model InvoiceItem {
@@ -70,30 +105,28 @@ model InvoiceItem {
   invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
 
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  PAID
-  OVERDUE
-}
-
 model Customer {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  email     String   @unique
+  email     String    @unique
   phone     String?
-  gstin     String? // GST Identification Number
+  gstin     String?
   address   String?
   city      String?
   state     String?
   zipCode   String?
   country   String?
-  status    String   @default("Active") // "Active" | "Inactive"
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("Active")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
   userId    String?
+  user      User?     @relation(fields: [userId], references: [id])
+  invoices  Invoice[]
+}
 
-  // Relations
-  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  invoices Invoice[]
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
 }
