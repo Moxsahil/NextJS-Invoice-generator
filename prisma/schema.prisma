@@ -67,6 +67,7 @@ model User {
   merchantName         String?
   customers            Customer[]
   invoices             Invoice[]
+  notifications        Notification[]
 }
 
 model Invoice {
@@ -129,4 +130,40 @@ enum InvoiceStatus {
   SENT
   PAID
   OVERDUE
+}
+
+model Notification {
+  id        String               @id @default(cuid())
+  title     String
+  message   String
+  type      NotificationType
+  category  NotificationCategory
+  isRead    Boolean              @default(false)
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metadata  Json?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  SUCCESS
+  INFO
+  WARNING
+  ERROR
+}
+
+enum NotificationCategory {
+  INVOICE_CREATED
+  INVOICE_SENT
+  INVOICE_PAID
+  INVOICE_OVERDUE
+  PAYMENT_RECEIVED
+  PAYMENT_FAILED
+  NEW_CUSTOMER
+  CUSTOMER_UPDATED
+  SYSTEM_UPDATE
+  SECURITY_ALERT
 }

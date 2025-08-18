@@ -1,5 +1,6 @@
 import { getAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { notificationService } from "@/lib/notification-service";
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
@@ -201,6 +202,21 @@ export async function POST(request: NextRequest) {
 
       return invoice;
     });
+
+    // Create notification for invoice creation
+    try {
+      await notificationService.createInvoiceNotification(
+        'created',
+        userId,
+        {
+          invoiceNumber: result.invoiceNumber,
+          customerName: customer.name,
+          amount: totalAmount,
+        }
+      );
+    } catch (error) {
+      console.error('Failed to create notification:', error);
+    }
 
     // Check if payment reminders are enabled and schedule them
     if (userSettings?.invoiceReminders && customer.email) {

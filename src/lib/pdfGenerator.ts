@@ -424,6 +424,7 @@ export class ProfessionalInvoicePDF {
       throw new Error("Failed to generate PDF");
     }
   }
+
 }
 
 // Export function for easy use
@@ -436,3 +437,4 @@ export const downloadInvoiceAsPDF = async (invoice: Invoice, qrOptions?: { inclu
     throw error;
   }
 };
+

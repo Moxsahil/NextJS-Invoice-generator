@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { notificationService } from "@/lib/notification-service";
 
 // GET /api/customers - Fetch all customers with real-time invoice data
 export async function GET(request: NextRequest) {
@@ -174,6 +175,20 @@ export async function POST(request: NextRequest) {
         userId: userId,
       },
     });
+
+    // Create notification for new customer
+    try {
+      await notificationService.createCustomerNotification(
+        'new',
+        userId,
+        {
+          name: customer.name,
+          email: customer.email,
+        }
+      );
+    } catch (error) {
+      console.error('Failed to create notification:', error);
+    }
 
     return NextResponse.json(
       {

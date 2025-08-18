@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer";
 import { prisma } from "@/lib/db";
+import { getAuthUser } from "@/lib/auth";
 import QRCode from "qrcode";
 
 export async function POST(request: NextRequest) {
   try {
+    // Check authentication
+    const userId = await getAuthUser(request);
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { invoiceId } = await request.json();
 
     if (!invoiceId) {
@@ -24,6 +31,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if the invoice belongs to the authenticated user
+    if (invoice.userId !== userId) {
+      return NextResponse.json(
+        { message: "Access denied" },
+        { status: 403 }
+      );
+    }
+
     // Fetch invoice settings to check if QR code should be included
     const invoiceSettings = await getInvoiceSettings(invoice.userId);
     
@@ -31,7 +46,8 @@ export async function POST(request: NextRequest) {
     let qrCodeDataUrl = '';
     if (invoiceSettings?.includeQRCode && invoiceSettings?.upiId) {
       try {
-        const upiUrl = `upi://pay?pa=${invoiceSettings.upiId}&pn=${encodeURIComponent(invoiceSettings.merchantName || invoice.companyName)}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(`Payment for Invoice ${invoice.invoiceNumber}`)}`;
+        const merchantName = invoiceSettings.merchantName || invoiceSettings.companyName || invoice.companyName;
+        const upiUrl = `upi://pay?pa=${invoiceSettings.upiId}&pn=${encodeURIComponent(merchantName)}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(`Payment for Invoice ${invoice.invoiceNumber}`)}`;
         qrCodeDataUrl = await QRCode.toDataURL(upiUrl, {
           width: 150,
           margin: 2,
@@ -366,11 +382,6 @@ function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDa
                   : ""
               }
               ${
-                invoice.companyEmail
-                  ? `<p><strong>Email:</strong> ${invoice.companyEmail}</p>`
-                  : ""
-              }
-              ${
                 invoice.companyGSTIN
                   ? `<p><strong>GSTIN:</strong> ${invoice.companyGSTIN}</p>`
                   : ""
@@ -381,16 +392,6 @@ function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDa
               <h3>Bill To</h3>
               <p><strong>${invoice.customerName}</strong></p>
               <p>${invoice.customerAddress.replace(/\n/g, "<br>")}</p>
-              ${
-                invoice.customerPhone
-                  ? `<p><strong>Phone:</strong> ${invoice.customerPhone}</p>`
-                  : ""
-              }
-              ${
-                invoice.customerEmail
-                  ? `<p><strong>Email:</strong> ${invoice.customerEmail}</p>`
-                  : ""
-              }
               ${
                 invoice.customerGSTIN
                   ? `<p><strong>GSTIN:</strong> ${invoice.customerGSTIN}</p>`
@@ -551,15 +552,21 @@ function getStatusColor(status: string): string {
   return colors[status.toLowerCase()] || "#6b7280";
 }
 
-// Database query function to get invoice settings
+// Database query function to get invoice settings from User table
 async function getInvoiceSettings(userId: string) {
   try {
-    const settings = await prisma.invoiceSettings.findUnique({
+    const user = await prisma.user.findUnique({
       where: {
-        userId: userId,
+        id: userId,
+      },
+      select: {
+        includeQRCode: true,
+        upiId: true,
+        merchantName: true,
+        companyName: true,
       },
     });
-    return settings;
+    return user;
   } catch (error) {
     console.error("Error fetching invoice settings:", error);
     return null;

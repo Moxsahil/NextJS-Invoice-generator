@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import NotificationBell from "@/components/notifications/NotificationBell";
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -108,6 +109,7 @@ export default function Header({
 
         {/* Right side */}
         <div className="flex items-center space-x-4">
+          {user && <NotificationBell />}
           {user ? (
             <div className="relative">
               <button
