@@ -7,9 +7,21 @@ const securityUpdateSchema = z.object({
   currentPassword: z.string().optional(),
   newPassword: z
     .string()
-    .min(8, "Password must be at least 8 characters")
+    .refine((val) => val === "" || val.length >= 8, {
+      message: "Password must be at least 8 characters",
+    })
     .optional(),
-});
+  sessionTimeout: z.number().optional(),
+  loginAlerts: z.boolean().optional(),
+  allowMultipleSessions: z.boolean().optional(),
+}).transform((data) => ({
+  // Transform empty strings to undefined
+  currentPassword: data.currentPassword === "" ? undefined : data.currentPassword,
+  newPassword: data.newPassword === "" ? undefined : data.newPassword,
+  sessionTimeout: data.sessionTimeout,
+  loginAlerts: data.loginAlerts,
+  allowMultipleSessions: data.allowMultipleSessions,
+}));
 
 export async function PUT(request: NextRequest) {
   try {
@@ -50,8 +62,45 @@ export async function PUT(request: NextRequest) {
         where: { id: userId },
         data: { 
           password: hashedPassword,
+          passwordLastChanged: new Date(),
           updatedAt: new Date()
         },
+      });
+    }
+
+    // Update other security settings
+    const updateData: any = {};
+    
+    if (validatedData.sessionTimeout !== undefined) {
+      updateData.sessionTimeout = validatedData.sessionTimeout;
+    }
+    
+    if (validatedData.loginAlerts !== undefined) {
+      updateData.loginAlerts = validatedData.loginAlerts;
+    }
+    
+    if (validatedData.allowMultipleSessions !== undefined) {
+      updateData.allowMultipleSessions = validatedData.allowMultipleSessions;
+      
+      // If disabling multiple sessions, terminate all other active sessions
+      if (!validatedData.allowMultipleSessions) {
+        await prisma.userSession.updateMany({
+          where: {
+            userId,
+            isActive: true,
+          },
+          data: {
+            isActive: false,
+          },
+        });
+      }
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      updateData.updatedAt = new Date();
+      await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
       });
     }
 

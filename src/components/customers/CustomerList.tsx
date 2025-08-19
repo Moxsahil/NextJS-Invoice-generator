@@ -33,10 +33,6 @@ export default function CustomerList({
       const { customerId } = event.detail;
 
       if (customerId) {
-        console.log(
-          "CustomerList: Received update event for customer:",
-          customerId
-        );
 
         // Show syncing indicator immediately
         setSyncingCustomers((prev) => new Set(prev).add(customerId));

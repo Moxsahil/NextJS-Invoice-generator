@@ -16,6 +16,10 @@ export async function GET(request: NextRequest) {
         name: true,
         email: true,
         createdAt: true,
+        twoFactorEnabled: true,
+        sessionTimeout: true,
+        loginAlerts: true,
+        allowMultipleSessions: true,
       },
     });
 

@@ -74,10 +74,8 @@ export default function InvoiceSettings() {
           const result = await response.json();
           setFormData(result.data);
         } else {
-          console.error("Failed to load invoice data");
-        }
+          }
       } catch (error) {
-        console.error("Error loading invoice data:", error);
         toast.error("Failed to load invoice settings");
       } finally {
         setLoading(false);
@@ -154,7 +152,6 @@ export default function InvoiceSettings() {
 
   // Handle form field changes
   const handleFieldChange = (field: string, value: any) => {
-    console.log(`Field ${field} changed to:`, value); // Debug log
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasUnsavedChanges(true);
   };

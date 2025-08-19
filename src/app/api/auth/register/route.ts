@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { name, email, password } = registerSchema.parse(body);
-    // console.log(name, email, password);
 
     //chech if user already exists
 

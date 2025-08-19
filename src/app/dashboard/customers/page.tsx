@@ -40,7 +40,6 @@ export default function CustomersPage() {
   // Listen for invoice creation events to trigger customer refresh
   useEffect(() => {
     const handleCustomerDataUpdate = (event: CustomEvent) => {
-      console.log("Customer data update event received:", event.detail);
       setSyncIndicator(true);
 
       // If we have a specific customer ID, refresh just that customer
@@ -146,7 +145,6 @@ export default function CustomersPage() {
       setShowAddModal(false);
       refreshCustomers();
     } catch (error) {
-      console.error("Error saving customer:", error);
     }
   };
 

@@ -65,17 +65,11 @@ export async function POST(request: NextRequest) {
     }
 
     // In a real application, you would save these reminders to a queue/database
-    // and have a background job process them. For now, we'll just log them.
-    console.log("Scheduled payment reminders:", {
-      invoiceId,
-      customerEmail,
-      reminders,
-    });
+    // and have a background job process them.
 
     // Simulate scheduling reminders
     for (const reminder of reminders) {
       // In production, you would use a job queue like Bull, Agenda, or similar
-      console.log(`Reminder scheduled for ${reminder.scheduledDate.toISOString()}: ${reminder.type} (${reminder.daysDifference} days)`);
     }
 
     return NextResponse.json({
@@ -91,7 +85,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error scheduling payment reminders:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -128,7 +121,6 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Error fetching payment reminder settings:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

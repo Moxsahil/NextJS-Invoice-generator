@@ -81,7 +81,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ invoices: transformedInvoices });
   } catch (error) {
-    console.error("Error fetching invoices:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -215,7 +214,7 @@ export async function POST(request: NextRequest) {
         }
       );
     } catch (error) {
-      console.error('Failed to create notification:', error);
+      
     }
 
     // Check if payment reminders are enabled and schedule them
@@ -239,10 +238,9 @@ export async function POST(request: NextRequest) {
         );
 
         if (reminderResponse.ok) {
-          console.log("Payment reminders scheduled successfully");
+          
         }
       } catch (error) {
-        console.error("Failed to schedule payment reminders:", error);
         // Don't fail the invoice creation if reminders fail
       }
     }
@@ -265,7 +263,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("Error creating invoice:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

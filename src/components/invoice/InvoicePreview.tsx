@@ -254,7 +254,6 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (invoiceSettings.includeQRCode && invoiceSettings.upiId && !qrCodeDataUrl) {
-        console.log("Retrying QR code generation...");
         generateQRCode();
       }
     }, 1000);
@@ -282,7 +281,6 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
 
   const loadInvoiceSettings = async () => {
     try {
-      console.log("Loading invoice settings...");
       const response = await fetch("/api/settings/invoice", {
         method: "GET",
         credentials: "include",
@@ -290,13 +288,10 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Invoice settings loaded:", result.data);
         setInvoiceSettings(result.data);
       } else {
-        console.error("Failed to load invoice settings:", response.status, response.statusText);
       }
     } catch (error) {
-      console.error("Error loading invoice settings:", error);
     }
   };
 
@@ -314,20 +309,13 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
         });
       }
     } catch (error) {
-      console.error("Error loading company details:", error);
     }
   };
 
   const generateQRCode = async () => {
     try {
-      console.log("Generate QR Code called with settings:", {
-        includeQRCode: invoiceSettings.includeQRCode,
-        upiId: invoiceSettings.upiId,
-        merchantName: invoiceSettings.merchantName
-      });
 
       if (!invoiceSettings.upiId) {
-        console.log("UPI ID not configured, skipping QR code generation");
         setQrCodeDataUrl(""); // Clear any existing QR code
         return;
       }
@@ -335,7 +323,6 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
       // Create UPI payment URL for real payments
       const upiUrl = `upi://pay?pa=${invoiceSettings.upiId}&pn=${encodeURIComponent(invoiceSettings.merchantName || invoice.companyName)}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(`Payment for Invoice ${invoice.invoiceNumber}`)}`;
       
-      console.log("Generating QR code for UPI URL:", upiUrl);
 
       const qrDataUrl = await QRCode.toDataURL(upiUrl, {
         width: 150,
@@ -347,10 +334,8 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
         errorCorrectionLevel: 'M'
       });
       
-      console.log("QR Code generated successfully");
       setQrCodeDataUrl(qrDataUrl);
     } catch (error) {
-      console.error("Error generating UPI QR code:", error);
       setQrCodeDataUrl(""); // Clear QR code on error
     }
   };
@@ -382,7 +367,6 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
         toast.success(`Invoice ${invoice.invoiceNumber} downloaded successfully!`);
       }, 1000);
     } catch (error) {
-      console.error("Error downloading PDF:", error);
       toast.error("Failed to download PDF. Please try again.");
     } finally {
       setIsDownloading(false);
@@ -418,7 +402,6 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
         throw new Error(data.error || "Failed to send email");
       }
     } catch (error) {
-      console.error("Error sending email:", error);
       toast.error("Failed to send email. Please try again.");
     } finally {
       setIsEmailSending(false);

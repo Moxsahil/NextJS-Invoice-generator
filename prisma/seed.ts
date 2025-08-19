@@ -4,7 +4,6 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Seeding database...");
 
   // Create sample customers
   const customers = await Promise.all([
@@ -75,7 +74,6 @@ async function main() {
     }),
   ]);
 
-  console.log(`✅ Created ${customers.length} customers`);
 
   // Create sample invoices
   const invoices = [];
@@ -150,23 +148,16 @@ async function main() {
     invoices.push(invoice);
   }
 
-  console.log(`✅ Created ${invoices.length} invoices with items`);
 
   // Summary
   const totalCustomers = await prisma.customer.count();
   const totalInvoices = await prisma.invoice.count();
   const totalItems = await prisma.invoiceItem.count();
 
-  console.log("\n📊 Database Summary:");
-  console.log(`   Customers: ${totalCustomers}`);
-  console.log(`   Invoices: ${totalInvoices}`);
-  console.log(`   Invoice Items: ${totalItems}`);
-  console.log("\n🎉 Database seeding completed!");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Error seeding database:", e);
     process.exit(1);
   })
   .finally(async () => {

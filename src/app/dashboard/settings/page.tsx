@@ -47,12 +47,12 @@ const settingsTabs = [
     icon: Bell,
     description: "Email and app notifications",
   },
-  {
-    id: "theme",
-    label: "Appearance",
-    icon: Palette,
-    description: "Theme and display preferences",
-  },
+  // {
+  //   id: "theme",
+  //   label: "Appearance",
+  //   icon: Palette,
+  //   description: "Theme and display preferences",
+  // },
   {
     id: "security",
     label: "Security",

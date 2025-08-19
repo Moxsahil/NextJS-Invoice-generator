@@ -9,65 +9,72 @@ datasource db {
 }
 
 model User {
-  id                   String     @id @default(cuid())
-  email                String     @unique
-  name                 String
-  password             String
-  createdAt            DateTime   @default(now())
-  updatedAt            DateTime   @updatedAt
-  accountName          String?
-  accountNumber        String?
-  bankBranch           String?
-  bankName             String?
-  browserNotifications Boolean    @default(true)
-  colorScheme          String     @default("blue")
-  companyAddress       String?
-  companyCity          String?
-  companyCountry       String?    @default("India")
-  companyEmail         String?
-  companyGSTIN         String?
-  companyLogo          String?
-  companyName          String?
-  companyPhone         String?
-  companyState         String?
-  companyWebsite       String?
-  companyZipCode       String?
-  defaultCurrency      String     @default("INR")
-  defaultPaymentTerms  String     @default("30 days")
-  defaultTaxRate       Float      @default(18.0)
-  sgstRate             Float      @default(9.0)
-  cgstRate             Float      @default(9.0)
-  igstRate             Float      @default(18.0)
-  emailNotifications   Boolean    @default(true)
-  fontSize             String     @default("medium")
-  ifscCode             String?
-  invoiceFooter        String?
-  invoicePrefix        String     @default("INV")
-  invoiceSuffix        String?
-  invoiceReminders     Boolean    @default(true)
-  invoiceStartNumber   Int        @default(1001)
-  invoiceResetNumbering String    @default("never")
-  includeQRCode        Boolean    @default(true)
-  showBankDetails      Boolean    @default(true)
-  showCompanyLogo      Boolean    @default(true)
-  showPaymentTerms     Boolean    @default(true)
-  autoSendEmail        Boolean    @default(false)
-  emailTemplate        String     @default("professional")
-  defaultTerms         String?
-  language             String?    @default("en")
-  marketingEmails      Boolean    @default(false)
-  passwordLastChanged  DateTime?
-  paymentAlerts        Boolean    @default(true)
-  phone                String?
-  sessionTimeout       Int        @default(30)
-  theme                String     @default("light")
-  timezone             String?    @default("Asia/Kolkata")
-  twoFactorEnabled     Boolean    @default(false)
-  upiId                String?
-  merchantName         String?
-  customers            Customer[]
-  invoices             Invoice[]
-  notifications        Notification[]
+  id                    String         @id @default(cuid())
+  email                 String         @unique
+  name                  String
+  password              String
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  accountName           String?
+  accountNumber         String?
+  bankBranch            String?
+  bankName              String?
+  browserNotifications  Boolean        @default(true)
+  colorScheme           String         @default("blue")
+  companyAddress        String?
+  companyCity           String?
+  companyCountry        String?        @default("India")
+  companyEmail          String?
+  companyGSTIN          String?
+  companyLogo           String?
+  companyName           String?
+  companyPhone          String?
+  companyState          String?
+  companyWebsite        String?
+  companyZipCode        String?
+  defaultCurrency       String         @default("INR")
+  defaultPaymentTerms   String         @default("30 days")
+  defaultTaxRate        Float          @default(18.0)
+  sgstRate              Float          @default(9.0)
+  cgstRate              Float          @default(9.0)
+  igstRate              Float          @default(18.0)
+  emailNotifications    Boolean        @default(true)
+  fontSize              String         @default("medium")
+  ifscCode              String?
+  invoiceFooter         String?
+  invoicePrefix         String         @default("INV")
+  invoiceSuffix         String?
+  invoiceReminders      Boolean        @default(true)
+  invoiceStartNumber    Int            @default(1001)
+  invoiceResetNumbering String         @default("never")
+  includeQRCode         Boolean        @default(true)
+  showBankDetails       Boolean        @default(true)
+  showCompanyLogo       Boolean        @default(true)
+  showPaymentTerms      Boolean        @default(true)
+  autoSendEmail         Boolean        @default(false)
+  emailTemplate         String         @default("professional")
+  defaultTerms          String?
+  language              String?        @default("en")
+  marketingEmails       Boolean        @default(false)
+  passwordLastChanged   DateTime?
+  paymentAlerts         Boolean        @default(true)
+  phone                 String?
+  sessionTimeout        Int            @default(4320) // 72 hours in minutes
+  loginAlerts           Boolean        @default(true)
+  allowMultipleSessions Boolean        @default(true)
+  theme                 String         @default("light")
+  timezone              String?        @default("Asia/Kolkata")
+  twoFactorEnabled      Boolean        @default(false)
+  twoFactorSecret       String?
+  twoFactorBackupCodes  String?
+  passwordResetToken    String?
+  passwordResetExpires  DateTime?
+  upiId                 String?
+  merchantName          String?
+  customers             Customer[]
+  invoices              Invoice[]
+  notifications         Notification[]
+  sessions              UserSession[]
 }
 
 model Invoice {
@@ -166,4 +173,24 @@ enum NotificationCategory {
   CUSTOMER_UPDATED
   SYSTEM_UPDATE
   SECURITY_ALERT
+}
+
+model UserSession {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId  String   @unique
+  ipAddress  String?
+  userAgent  String?
+  city       String?
+  country    String?
+  device     String?
+  browser    String?
+  os         String?
+  isActive   Boolean  @default(true)
+  lastActive DateTime @default(now())
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+
+  @@map("user_sessions")
 }
