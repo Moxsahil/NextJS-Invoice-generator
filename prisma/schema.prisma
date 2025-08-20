@@ -71,10 +71,24 @@ model User {
   passwordResetExpires  DateTime?
   upiId                 String?
   merchantName          String?
+  
+  // Billing & Subscription fields (Razorpay Integration)
+  subscriptionStatus    SubscriptionStatus @default(TRIAL)
+  planId                String?        @default("free")
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  nextBillingDate       DateTime?
+  trialEndsAt           DateTime?      @default(dbgenerated("NOW() + INTERVAL '7 days'"))
+  invoiceUsage          Int            @default(0) // Track usage for current period
+  razorpayCustomerId    String?        // Razorpay customer ID
+  
   customers             Customer[]
   invoices              Invoice[]
   notifications         Notification[]
   sessions              UserSession[]
+  subscriptions         Subscription[]
+  billingHistory        BillingHistory[]
+  transactions          Transaction[]
 }
 
 model Invoice {
@@ -193,4 +207,138 @@ model UserSession {
   expiresAt  DateTime
 
   @@map("user_sessions")
+}
+
+model Subscription {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId                String
+  plan                  Plan                  @relation(fields: [planId], references: [id])
+  status                SubscriptionStatus
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  trialStart            DateTime?
+  trialEnd              DateTime?
+  canceledAt            DateTime?
+  cancelAtPeriodEnd     Boolean               @default(false)
+  autoRenew             Boolean               @default(true)
+  razorpaySubscriptionId String?              @unique // Razorpay subscription ID (for recurring)
+  razorpayCustomerId    String?               // Razorpay customer ID
+  metadata              Json?                 // Razorpay subscription data
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@map("subscriptions")
+}
+
+model BillingHistory {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId        String?
+  transactionId         String?
+  amount                Float
+  currency              String                @default("INR")
+  status                BillingStatus
+  planName              String
+  billingReason         String?               // subscription_payment, plan_change, etc.
+  description           String?
+  periodStart           DateTime
+  periodEnd             DateTime
+  paidAt                DateTime?
+  dueDate               DateTime?
+  invoiceNumber         String?               @unique
+  paymentMethod         String?               // Card, UPI, Net Banking, Wallet
+  razorpayPaymentId     String?               // Razorpay payment ID
+  razorpayOrderId       String?               // Razorpay order ID
+  metadata              Json?                 // Razorpay payment data
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@map("billing_history")
+}
+
+model Plan {
+  id                    String                @id @default(cuid())
+  name                  String
+  description           String?
+  price                 Float
+  currency              String                @default("INR")
+  interval              PricingInterval
+  intervalCount         Int                   @default(1)
+  trialPeriodDays       Int?                  @default(7)
+  features              Json // Array of features
+  limits                Json // Usage limits (invoices per month, users, etc.)
+  isActive              Boolean               @default(true)
+  isPopular             Boolean               @default(false)
+  sortOrder             Int                   @default(0)
+  color                 String?               @default("blue")
+  subscriptions         Subscription[]
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@map("plans")
+}
+
+model Transaction {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  TransactionType
+  amount                Float
+  currency              String                @default("INR")
+  status                TransactionStatus
+  reference             String?               @unique // Razorpay order_id for tracking
+  description           String
+  paymentMethod         String?               // Payment method used (Card, UPI, etc.)
+  razorpayPaymentId     String?               // Razorpay payment_id
+  razorpayOrderId       String?               // Razorpay order_id
+  razorpaySignature     String?               // Payment signature
+  metadata              Json?                 // Additional Razorpay data
+  processedAt           DateTime?
+  failureReason         String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@map("transactions")
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  UNPAID
+  INCOMPLETE
+  INCOMPLETE_EXPIRED
+}
+
+enum BillingStatus {
+  PAID
+  PENDING
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+enum PricingInterval {
+  MONTH
+  YEAR
+}
+
+enum TransactionType {
+  SUBSCRIPTION_PAYMENT
+  PLAN_UPGRADE
+  PLAN_DOWNGRADE
+  REFUND
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELED
+  REFUNDED
 }
