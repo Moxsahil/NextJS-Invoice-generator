@@ -147,9 +147,10 @@ export async function POST(request: NextRequest) {
           userId,
           type: validatedData.type,
           name: validatedData.name,
+          displayName: validatedData.name,
           details: encryptedDetails,
           isDefault: validatedData.isDefault,
-          expiryDate,
+          expiresAt: expiryDate,
         }
       });
 

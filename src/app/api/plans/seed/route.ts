@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // First, check if plans already exist
     const existingPlans = await prisma.plan.findMany();

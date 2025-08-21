@@ -2,6 +2,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  profileImage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -177,6 +178,18 @@ export interface UserSubscription {
   // paymentMethod?: PaymentMethod
   createdAt: Date;
   updatedAt: Date;
+  userStatus: UserSubscriptionStatus;
+}
+
+export interface UserSubscriptionStatus {
+  subscriptionStatus: string;
+  planId: string;
+  trialEndsAt?: string;
+  nextBillingDate?: string;
+  subscriptionStartDate?: string;
+  subscriptionEndDate?: string;
+  invoiceUsage: number;
+  walletBalance: number;
 }
 
 export type SubscriptionPlan = "free" | "basic" | "pro" | "enterprise";

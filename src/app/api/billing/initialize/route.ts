@@ -48,8 +48,7 @@ export async function POST(request: NextRequest) {
           subscriptionStartDate: new Date(),
           trialEndsAt: null,
           nextBillingDate: null,
-          invoiceUsage: 0,
-          walletBalance: 0.0
+          invoiceUsage: 0
         }
       });
 

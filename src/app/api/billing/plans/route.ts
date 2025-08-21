@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthUser } from "@/lib/auth";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const plans = await prisma.plan.findMany({
       where: { isActive: true },
@@ -24,12 +24,6 @@ export async function POST(request: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    // Check if user is admin (you can implement admin check based on your requirements)
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { email: true }
-    });
 
     // For demo purposes, let's allow plan creation
     // In production, you'd want proper admin authentication

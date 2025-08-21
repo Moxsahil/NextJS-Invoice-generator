@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sendInvoiceEmail } from "@/lib/emailService";
 import { getAuthUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { invoice, customerEmail, companyEmail } = await request.json();
+    const { invoice, customerEmail, companyEmail, invoiceSettings } = await request.json();
 
     if (!invoice || !customerEmail) {
       return NextResponse.json(
@@ -27,8 +28,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Load user's company logo if not provided in invoiceSettings
+    if (invoiceSettings && !invoiceSettings.companyLogo) {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { companyLogo: true, showCompanyLogo: true }
+      });
+      
+      if (user) {
+        invoiceSettings.companyLogo = user.companyLogo;
+        invoiceSettings.showCompanyLogo = user.showCompanyLogo;
+      }
+    }
+
     // Send the email
-    await sendInvoiceEmail(invoice, customerEmail, companyEmail);
+    await sendInvoiceEmail(invoice, customerEmail, companyEmail, invoiceSettings);
 
     return NextResponse.json({
       message: "Invoice sent successfully",

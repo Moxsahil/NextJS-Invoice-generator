@@ -305,8 +305,14 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
       if (response.ok) {
         const result = await response.json();
         setCompanyDetails({
-          companyLogo: result.data.companyLogo,
+          companyLogo: result.data.logo,
         });
+        
+        // Also update invoice settings with company logo
+        setInvoiceSettings(prev => ({
+          ...prev,
+          companyLogo: result.data.logo
+        }));
       }
     } catch (error) {
     }
@@ -358,8 +364,14 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
         merchantName: invoiceSettings.merchantName
       };
 
+      // Ensure companyLogo is included in settings for download
+      const settingsWithLogo = {
+        ...invoiceSettings,
+        companyLogo: companyDetails.companyLogo || invoiceSettings.companyLogo
+      };
+
       // Generate and download PDF
-      await downloadInvoiceAsPDF(invoice, qrOptions);
+      await downloadInvoiceAsPDF(invoice, qrOptions, settingsWithLogo);
 
       // Show success message (optional)
       // Show success toast notification
@@ -387,6 +399,7 @@ export default function InvoicePreview({ invoice }: InvoicePreviewProps) {
           customerEmail,
           companyEmail: "your-company@example.com",
           enableReminders: invoiceSettings.enableReminders,
+          invoiceSettings,
         }),
       });
 

@@ -3,12 +3,16 @@ import { prisma } from "@/lib/db";
 import crypto from "crypto";
 
 // Verify Razorpay webhook signature
-function verifyWebhookSignature(body: string, signature: string, secret: string): boolean {
+function verifyWebhookSignature(
+  body: string,
+  signature: string,
+  secret: string
+): boolean {
   const expectedSignature = crypto
     .createHmac("sha256", secret)
     .update(body)
     .digest("hex");
-  
+
   return expectedSignature === signature;
 }
 
@@ -16,15 +20,22 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.text();
     const signature = request.headers.get("x-razorpay-signature");
-    
+
     if (!signature) {
-      return NextResponse.json({ error: "No signature provided" }, { status: 400 });
+      return NextResponse.json(
+        { error: "No signature provided" },
+        { status: 400 }
+      );
     }
 
     // Verify webhook signature
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || "";
-    const isValidSignature = verifyWebhookSignature(body, signature, webhookSecret);
-    
+    const isValidSignature = verifyWebhookSignature(
+      body,
+      signature,
+      webhookSecret
+    );
+
     if (!isValidSignature) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
@@ -37,37 +48,36 @@ export async function POST(request: NextRequest) {
       case "payment.captured":
         await handlePaymentCaptured(payload);
         break;
-        
+
       case "payment.failed":
         await handlePaymentFailed(payload);
         break;
-        
+
       case "subscription.activated":
         await handleSubscriptionActivated(payload);
         break;
-        
+
       case "subscription.cancelled":
         await handleSubscriptionCancelled(payload);
         break;
-        
+
       case "subscription.completed":
         await handleSubscriptionCompleted(payload);
         break;
-        
+
       case "subscription.charged":
         await handleSubscriptionCharged(payload);
         break;
-        
+
       case "subscription.updated":
         await handleSubscriptionUpdated(payload);
         break;
-        
+
       default:
-        console.log(`Unhandled webhook event: ${eventType}`);
+        console.error(`Unhandled webhook event: ${eventType}`);
     }
 
     return NextResponse.json({ status: "success" });
-    
   } catch (error) {
     return NextResponse.json(
       { error: "Webhook processing failed" },
@@ -84,7 +94,7 @@ async function handlePaymentCaptured(payload: any) {
 
   // Find transaction by order ID
   const transaction = await prisma.transaction.findFirst({
-    where: { reference: orderId }
+    where: { reference: orderId },
   });
 
   if (transaction && transaction.status !== "SUCCESS") {
@@ -94,11 +104,11 @@ async function handlePaymentCaptured(payload: any) {
         status: "SUCCESS",
         processedAt: new Date(),
         metadata: {
-          ...transaction.metadata as any,
+          ...(transaction.metadata as any),
           webhook_payment_id: paymentId,
           webhook_captured_at: new Date().toISOString(),
-        }
-      }
+        },
+      },
     });
   }
 }
@@ -111,7 +121,7 @@ async function handlePaymentFailed(payload: any) {
 
   // Find transaction by order ID
   const transaction = await prisma.transaction.findFirst({
-    where: { reference: orderId }
+    where: { reference: orderId },
   });
 
   if (transaction && transaction.status !== "FAILED") {
@@ -122,11 +132,11 @@ async function handlePaymentFailed(payload: any) {
         processedAt: new Date(),
         failureReason: errorReason,
         metadata: {
-          ...transaction.metadata as any,
+          ...(transaction.metadata as any),
           webhook_payment_id: paymentId,
           webhook_failed_at: new Date().toISOString(),
-        }
-      }
+        },
+      },
     });
   }
 }
@@ -141,9 +151,9 @@ async function handleSubscriptionActivated(payload: any) {
     where: {
       metadata: {
         path: ["razorpay_subscription_id"],
-        equals: subscriptionId
-      }
-    }
+        equals: subscriptionId,
+      },
+    },
   });
 
   if (dbSubscription) {
@@ -152,11 +162,11 @@ async function handleSubscriptionActivated(payload: any) {
       data: {
         status: "ACTIVE",
         metadata: {
-          ...dbSubscription.metadata as any,
+          ...(dbSubscription.metadata as any),
           razorpay_status: subscription.status,
           webhook_activated_at: new Date().toISOString(),
-        }
-      }
+        },
+      },
     });
   }
 }
@@ -170,9 +180,9 @@ async function handleSubscriptionCancelled(payload: any) {
     where: {
       metadata: {
         path: ["razorpay_subscription_id"],
-        equals: subscriptionId
-      }
-    }
+        equals: subscriptionId,
+      },
+    },
   });
 
   if (dbSubscription) {
@@ -182,16 +192,16 @@ async function handleSubscriptionCancelled(payload: any) {
         status: "CANCELED",
         canceledAt: new Date(),
         metadata: {
-          ...dbSubscription.metadata as any,
+          ...(dbSubscription.metadata as any),
           razorpay_status: subscription.status,
           webhook_cancelled_at: new Date().toISOString(),
-        }
-      }
+        },
+      },
     });
 
     // Update user status to free plan
     const freePlan = await prisma.plan.findFirst({
-      where: { price: 0, isActive: true }
+      where: { price: 0, isActive: true },
     });
 
     if (freePlan && dbSubscription.userId) {
@@ -202,7 +212,7 @@ async function handleSubscriptionCancelled(payload: any) {
           planId: freePlan.id,
           subscriptionEndDate: null,
           nextBillingDate: null,
-        }
+        },
       });
     }
   }
@@ -217,9 +227,9 @@ async function handleSubscriptionCompleted(payload: any) {
     where: {
       metadata: {
         path: ["razorpay_subscription_id"],
-        equals: subscriptionId
-      }
-    }
+        equals: subscriptionId,
+      },
+    },
   });
 
   if (dbSubscription) {
@@ -228,11 +238,11 @@ async function handleSubscriptionCompleted(payload: any) {
       data: {
         status: "CANCELED", // Subscription completed means it ended
         metadata: {
-          ...dbSubscription.metadata as any,
+          ...(dbSubscription.metadata as any),
           razorpay_status: subscription.status,
           webhook_completed_at: new Date().toISOString(),
-        }
-      }
+        },
+      },
     });
   }
 }
@@ -247,10 +257,10 @@ async function handleSubscriptionCharged(payload: any) {
     where: {
       metadata: {
         path: ["razorpay_subscription_id"],
-        equals: subscriptionId
-      }
+        equals: subscriptionId,
+      },
     },
-    include: { plan: true }
+    include: { plan: true },
   });
 
   if (dbSubscription && dbSubscription.userId) {
@@ -287,7 +297,7 @@ async function handleSubscriptionCharged(payload: any) {
       data: {
         nextBillingDate: nextBillingDate,
         invoiceUsage: 0, // Reset usage for new billing period
-      }
+      },
     });
   }
 }
@@ -301,9 +311,9 @@ async function handleSubscriptionUpdated(payload: any) {
     where: {
       metadata: {
         path: ["razorpay_subscription_id"],
-        equals: subscriptionId
-      }
-    }
+        equals: subscriptionId,
+      },
+    },
   });
 
   if (dbSubscription) {
@@ -311,11 +321,11 @@ async function handleSubscriptionUpdated(payload: any) {
       where: { id: dbSubscription.id },
       data: {
         metadata: {
-          ...dbSubscription.metadata as any,
+          ...(dbSubscription.metadata as any),
           razorpay_status: subscription.status,
           webhook_updated_at: new Date().toISOString(),
-        }
-      }
+        },
+      },
     });
   }
 }

@@ -92,10 +92,10 @@ export async function POST(request: NextRequest) {
       preferCSSPageSize: true,
       displayHeaderFooter: false,
       margin: {
-        top: "1cm",
-        right: "1cm",
-        bottom: "1cm",
-        left: "1cm",
+        top: "1.2cm",
+        right: "1.2cm",
+        bottom: "1.2cm",
+        left: "1.2cm",
       },
     });
 
@@ -148,10 +148,11 @@ function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDa
         body { 
           font-family: 'Arial', 'Helvetica', sans-serif; 
           margin: 0; 
-          padding: 20px; 
+          padding: 24px; 
           color: #333;
-          line-height: 1.4;
+          line-height: 1.5;
           background: white;
+          font-size: 14px;
         }
         
         .invoice-container {
@@ -199,9 +200,10 @@ function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDa
         .details-section { 
           display: grid; 
           grid-template-columns: 1fr 1fr; 
-          gap: 50px; 
-          margin-bottom: 40px; 
-          padding: 20px 0;
+          gap: 60px; 
+          margin-bottom: 50px; 
+          padding: 25px 0;
+          align-items: flex-start;
         }
         
         .detail-box h3 { 
@@ -214,10 +216,12 @@ function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDa
         }
         
         .detail-box p { 
-          margin: 8px 0; 
+          margin: 10px 0; 
           color: #475569;
           font-size: 14px;
-          line-height: 1.5;
+          line-height: 1.6;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
         }
         
         .detail-box strong {
@@ -244,9 +248,11 @@ function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDa
         
         .items-table th, .items-table td { 
           border: 1px solid #e2e8f0; 
-          padding: 15px 12px; 
+          padding: 16px 14px; 
           text-align: left;
           font-size: 14px;
+          vertical-align: top;
+          word-wrap: break-word;
         }
         
         .items-table th { 
@@ -276,26 +282,28 @@ function generateInvoiceHTML(invoice: any, invoiceSettings: any = null, qrCodeDa
         .font-medium { font-weight: 500; }
         
         .totals-section { 
-          margin-bottom: 40px;
+          margin-bottom: 50px;
           display: flex;
           justify-content: flex-end;
+          page-break-inside: avoid;
         }
         
         .totals-box {
-          min-width: 400px;
+          min-width: 420px;
           background: #f8fafc;
           border-radius: 8px;
-          padding: 25px;
+          padding: 28px;
           border: 1px solid #e2e8f0;
         }
         
         .total-line { 
           display: flex; 
           justify-content: space-between; 
-          margin: 12px 0; 
-          padding: 10px 0;
+          margin: 14px 0; 
+          padding: 12px 0;
           font-size: 15px;
           color: #475569;
+          align-items: center;
         }
         
         .total-line.subtotal {

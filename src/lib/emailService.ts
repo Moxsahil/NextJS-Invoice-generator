@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
-import { downloadInvoiceAsPDF } from "./pdfGenerator";
+import { generateInvoicePDFAsBase64 } from "./pdfGenerator";
+import { prisma } from "./db";
 
 interface EmailConfig {
   host: string;
@@ -16,6 +17,7 @@ interface InvoiceEmailData {
   customerEmail: string;
   companyEmail?: string;
   emailConfig?: EmailConfig;
+  invoiceSettings?: any;
 }
 
 export class InvoiceEmailService {
@@ -392,8 +394,8 @@ export class InvoiceEmailService {
     try {
       const { invoice, customerEmail, companyEmail } = data;
 
-      // Generate PDF as base64
-      const pdfBase64 = await this.generatePDFBase64(invoice);
+      // Generate PDF as base64 with settings
+      const pdfBase64 = await this.generatePDFBase64(invoice, data);
 
       const mailOptions = {
         from: {
@@ -426,31 +428,86 @@ export class InvoiceEmailService {
     }
   }
 
-  private async generatePDFBase64(invoice: any): Promise<string> {
-    // This is a simplified version - you'll need to modify your PDF generator
-    // to return base64 instead of downloading
-    return new Promise((resolve, reject) => {
-      try {
-        // Import your PDF generator and modify it to return base64
-        // For now, this is a placeholder
-        const base64Data = "placeholder_base64_data";
-        resolve(base64Data);
-      } catch (error) {
-        reject(error);
-      }
-    });
+  private async generatePDFBase64(invoice: any, data: InvoiceEmailData): Promise<string> {
+    try {
+      // Use passed invoice settings or load defaults
+      const invoiceSettings = data.invoiceSettings || await this.loadInvoiceSettings();
+      
+      // Prepare QR options
+      const qrOptions = {
+        includeQRCode: invoiceSettings.includeQRCode || false,
+        upiId: invoiceSettings.upiId,
+        merchantName: invoiceSettings.merchantName || invoice.companyName
+      };
+
+      // Generate PDF as base64 using the same method as download
+      const base64Data = await generateInvoicePDFAsBase64(invoice, qrOptions, invoiceSettings);
+      return base64Data;
+    } catch (error) {
+      console.error("Error generating PDF base64:", error);
+      throw error;
+    }
+  }
+
+  private async loadInvoiceSettings(): Promise<any> {
+    try {
+      // Default settings if API is not available
+      const defaultSettings = {
+        includeQRCode: true,
+        showBankDetails: true,
+        showCompanyLogo: true,
+        showPaymentTerms: true,
+        enableReminders: false,
+        sgstRate: 2.5,
+        cgstRate: 2.5,
+        defaultTerms: "Payment is due within 30 days of invoice date. Late payments may be subject to a 1.5% monthly service charge.",
+        defaultNotes: "Thank you for your business!",
+        bankName: "",
+        accountNumber: "",
+        accountName: "",
+        ifscCode: "",
+        upiId: "",
+        merchantName: "",
+      };
+
+      // In a server environment, you'd fetch this from your database
+      // For now, return default settings
+      return defaultSettings;
+    } catch (error) {
+      console.error("Error loading invoice settings:", error);
+      // Return default settings on error
+      return {
+        includeQRCode: true,
+        showBankDetails: true,
+        showCompanyLogo: true,
+        showPaymentTerms: true,
+        enableReminders: false,
+        sgstRate: 2.5,
+        cgstRate: 2.5,
+        defaultTerms: "Payment is due within 30 days of invoice date. Late payments may be subject to a 1.5% monthly service charge.",
+        defaultNotes: "Thank you for your business!",
+        bankName: "",
+        accountNumber: "",
+        accountName: "",
+        ifscCode: "",
+        upiId: "",
+        merchantName: "",
+      };
+    }
   }
 }
 
 export const sendInvoiceEmail = async (
   invoice: any,
   customerEmail: string,
-  companyEmail?: string
+  companyEmail?: string,
+  invoiceSettings?: any
 ): Promise<boolean> => {
   const emailService = new InvoiceEmailService();
   return await emailService.sendInvoiceEmail({
     invoice,
     customerEmail,
     companyEmail,
+    invoiceSettings,
   });
 };

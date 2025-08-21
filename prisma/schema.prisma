@@ -27,6 +27,7 @@ model User {
   companyEmail          String?
   companyGSTIN          String?
   companyLogo           String?
+  companyLogoPublicId   String?        // Cloudinary public ID for logo management
   companyName           String?
   companyPhone          String?
   companyState          String?
@@ -71,6 +72,8 @@ model User {
   passwordResetExpires  DateTime?
   upiId                 String?
   merchantName          String?
+  profileImage          String?        // Profile photo URL
+  cloudinaryPublicId    String?        // Cloudinary public ID for image management
   
   // Billing & Subscription fields (Razorpay Integration)
   subscriptionStatus    SubscriptionStatus @default(TRIAL)
@@ -89,6 +92,7 @@ model User {
   subscriptions         Subscription[]
   billingHistory        BillingHistory[]
   transactions          Transaction[]
+  paymentMethods        PaymentMethod[]
 }
 
 model Invoice {
@@ -341,4 +345,25 @@ enum TransactionStatus {
   FAILED
   CANCELED
   REFUNDED
+}
+
+model PaymentMethod {
+  id                    String                @id @default(cuid())
+  userId                String
+  user                  User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                  String                // card, upi, netbanking, wallet
+  name                  String                // Payment method name
+  displayName           String                // User-friendly name
+  details               Json?                 // Payment details (encrypted)
+  isDefault             Boolean               @default(false)
+  isActive              Boolean               @default(true)
+  metadata              Json?                 // Additional metadata
+  razorpayMethodId      String?               // Razorpay token/method ID
+  expiryDate            DateTime?             // For cards
+  expiresAt             DateTime?
+  lastUsed              DateTime?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  
+  @@map("payment_methods")
 }

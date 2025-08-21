@@ -7,7 +7,7 @@ const defaultPlans = [
     description: "Perfect for getting started with basic invoice management",
     price: 0,
     currency: "INR",
-    interval: "MONTH",
+    interval: "MONTH" as const,
     intervalCount: 1,
     trialPeriodDays: 0,
     features: [
@@ -38,7 +38,7 @@ const defaultPlans = [
     description: "Ideal for small businesses and freelancers",
     price: 299,
     currency: "INR", 
-    interval: "MONTH",
+    interval: "MONTH" as const,
     intervalCount: 1,
     trialPeriodDays: 7,
     features: [
@@ -70,7 +70,7 @@ const defaultPlans = [
     description: "Perfect for growing businesses with advanced needs",
     price: 599,
     currency: "INR",
-    interval: "MONTH",
+    interval: "MONTH" as const,
     intervalCount: 1,
     trialPeriodDays: 14,
     features: [
@@ -105,7 +105,7 @@ const defaultPlans = [
     description: "For large organizations with custom requirements",
     price: 1499,
     currency: "INR",
-    interval: "MONTH",
+    interval: "MONTH" as const,
     intervalCount: 1,
     trialPeriodDays: 30,
     features: [

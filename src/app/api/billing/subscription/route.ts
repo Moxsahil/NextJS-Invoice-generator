@@ -40,8 +40,10 @@ export async function GET(request: NextRequest) {
         planId: user.planId,
         trialEndsAt: user.trialEndsAt,
         nextBillingDate: user.nextBillingDate,
+        subscriptionStartDate: user.subscriptionStartDate,
+        subscriptionEndDate: user.subscriptionEndDate,
         invoiceUsage: user.invoiceUsage,
-        walletBalance: user.walletBalance
+        walletBalance: 0 // TODO: Add wallet balance logic
       }
     });
   } catch (error) {
@@ -202,19 +204,47 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // First check if user has a paid plan
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!user || !user.planId) {
+      return NextResponse.json(
+        { error: "No active subscription found" },
+        { status: 404 }
+      );
+    }
+
+    // Check if user is on a paid plan
+    const currentPlan = await prisma.plan.findUnique({
+      where: { id: user.planId }
+    });
+
+    if (!currentPlan || currentPlan.price === 0) {
+      return NextResponse.json(
+        { error: "No paid subscription to cancel" },
+        { status: 404 }
+      );
+    }
+
+    // Find the most recent subscription (might not be ACTIVE status due to data sync issues)
     const currentSubscription = await prisma.subscription.findFirst({
       where: {
         userId,
-        status: { in: ['ACTIVE', 'TRIAL'] }
+        planId: user.planId
       },
       include: {
         plan: true
+      },
+      orderBy: {
+        createdAt: 'desc'
       }
     });
 
     if (!currentSubscription) {
       return NextResponse.json(
-        { error: "No active subscription found" },
+        { error: "Subscription record not found" },
         { status: 404 }
       );
     }

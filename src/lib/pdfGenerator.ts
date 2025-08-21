@@ -19,6 +19,7 @@ interface Invoice {
   customerName: string;
   customerGSTIN?: string;
   customerAddress: string;
+  customerPhone?: string;
   invoiceDate: string;
   dueDate: string;
   subtotal: number;
@@ -29,388 +30,605 @@ interface Invoice {
   items: InvoiceItem[];
 }
 
-interface TaxRates {
-  sgstRate?: number;
-  cgstRate?: number;
-}
-
 export class ProfessionalInvoicePDF {
   private doc: jsPDF;
-  private readonly primaryColor = "#2563eb"; // Blue
-  private readonly secondaryColor = "#64748b"; // Slate
-  private readonly successColor = "#16a34a"; // Green
+  private readonly primaryColor = "#1f2937"; // Dark gray
+  private readonly accentColor = "#3b82f6"; // Blue
+  private readonly lightGray = "#f8fafc";
+  private readonly borderColor = "#e5e7eb";
   private readonly pageWidth: number;
   private readonly pageHeight: number;
   private currentY: number;
+  private readonly margin = 40;
+  private readonly footerHeight = 60; // Reserved space for footer
 
   constructor() {
     this.doc = new jsPDF("p", "pt", "a4");
     this.pageWidth = this.doc.internal.pageSize.getWidth();
     this.pageHeight = this.doc.internal.pageSize.getHeight();
-    this.currentY = 60;
+    this.currentY = this.margin;
   }
 
-  private addHeader(invoice: Invoice) {
-    // Company Logo Placeholder
-    this.doc.setFillColor(37, 99, 235); // Blue background
-    this.doc.rect(40, 40, 60, 60, "F");
+  private addHeader(invoice: Invoice, invoiceSettings?: any) {
+    // Clean header without boxes
+    let startY = this.margin;
 
-    // Logo Text
-    this.doc.setTextColor(255, 255, 255);
-    this.doc.setFontSize(24);
+    // Company logo - centered if enabled and available
+    if (invoiceSettings?.showCompanyLogo && invoiceSettings?.companyLogo) {
+      try {
+        const logoSize = 60; // Logo height
+        const logoX = (this.pageWidth - logoSize) / 2;
+        
+        // Add logo image
+        this.doc.addImage(
+          invoiceSettings.companyLogo,
+          "JPEG",
+          logoX,
+          startY,
+          logoSize,
+          logoSize,
+          undefined,
+          "FAST"
+        );
+        
+        startY += logoSize + 15; // Add space after logo
+      } catch (error) {
+        console.error("Error adding company logo to PDF:", error);
+        // Continue without logo if there's an error
+      }
+    }
+
+    // INVOICE title - centered
+    this.doc.setFontSize(28);
     this.doc.setFont("helvetica", "bold");
-    this.doc.text("I", 65, 80);
-
-    // Invoice Title
-    this.doc.setTextColor(33, 37, 41);
-    this.doc.setFontSize(32);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.text("INVOICE", this.pageWidth - 200, 60);
-
-    // Invoice Number
-    this.doc.setFontSize(14);
-    this.doc.setFont("helvetica", "normal");
-    this.doc.setTextColor(100, 116, 139);
-    this.doc.text(`#${invoice.invoiceNumber}`, this.pageWidth - 200, 85);
-
-    // Date
+    this.doc.setTextColor(31, 41, 55);
+    const titleWidth = this.doc.getTextWidth("INVOICE");
     this.doc.text(
-      `Date: ${new Date(invoice.invoiceDate).toLocaleDateString()}`,
-      this.pageWidth - 200,
-      105
+      "INVOICE",
+      (this.pageWidth - titleWidth) / 2,
+      startY + 15
     );
 
-    this.currentY = 140;
-  }
-
-  private addCompanyInfo(invoice: Invoice) {
-    // Company Section
-    this.doc.setFontSize(18);
+    // Company name - centered and larger
+    this.doc.setFontSize(20);
     this.doc.setFont("helvetica", "bold");
-    this.doc.setTextColor(33, 37, 41);
-    this.doc.text(invoice.companyName, 40, this.currentY);
+    this.doc.setTextColor(59, 130, 246);
+    const companyWidth = this.doc.getTextWidth(invoice.companyName);
+    this.doc.text(
+      invoice.companyName,
+      (this.pageWidth - companyWidth) / 2,
+      startY + 40
+    );
 
-    this.currentY += 25;
-
-    // Company Details
+    // Company address - centered
     this.doc.setFontSize(11);
     this.doc.setFont("helvetica", "normal");
-    this.doc.setTextColor(100, 116, 139);
-
-    const companyLines = this.splitText(invoice.companyAddress, 250);
-    companyLines.forEach((line) => {
-      this.doc.text(line, 40, this.currentY);
-      this.currentY += 15;
+    this.doc.setTextColor(107, 114, 128);
+    const addressLines = this.splitText(invoice.companyAddress, 400);
+    let addressY = startY + 55;
+    addressLines.forEach((line) => {
+      const lineWidth = this.doc.getTextWidth(line);
+      this.doc.text(line, (this.pageWidth - lineWidth) / 2, addressY);
+      addressY += 14;
     });
 
+    // Company phone - centered if available
     if (invoice.companyPhone) {
-      this.doc.text(`Phone: ${invoice.companyPhone}`, 40, this.currentY);
-      this.currentY += 15;
+      addressY += 2;
+      const phoneText = `Phone: ${invoice.companyPhone}`;
+      const phoneWidth = this.doc.getTextWidth(phoneText);
+      this.doc.text(phoneText, (this.pageWidth - phoneWidth) / 2, addressY);
+      addressY += 6;
     }
 
+    // GST number - centered if available
     if (invoice.companyGSTIN) {
-      this.doc.text(`GSTIN: ${invoice.companyGSTIN}`, 40, this.currentY);
-      this.currentY += 15;
+      this.doc.setFontSize(10);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(107, 114, 128);
+      const gstText = `GST NO: ${invoice.companyGSTIN}`;
+      const gstWidth = this.doc.getTextWidth(gstText);
+      this.doc.text(gstText, (this.pageWidth - gstWidth) / 2, addressY + 10);
+      addressY += 2;
     }
 
-    this.currentY += 20;
-  }
-
-  private addBillToSection(invoice: Invoice) {
-    const startY = 140;
-
-    // Bill To Header with background
-    this.doc.setFillColor(248, 250, 252); // Light gray background
-    this.doc.rect(320, startY - 15, 235, 30, "F");
-
-    this.doc.setFontSize(14);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.setTextColor(33, 37, 41);
-    this.doc.text("BILL TO", 330, startY);
-
-    // Customer Details
-    this.doc.setFontSize(13);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.setTextColor(33, 37, 41);
-    this.doc.text(invoice.customerName, 330, startY + 35);
-
-    let customerY = startY + 55;
-
-    this.doc.setFontSize(11);
-    this.doc.setFont("helvetica", "normal");
-    this.doc.setTextColor(100, 116, 139);
-
-    const customerLines = this.splitText(invoice.customerAddress, 220);
-    customerLines.forEach((line) => {
-      this.doc.text(line, 330, customerY);
-      customerY += 15;
-    });
-
-    if (invoice.customerGSTIN) {
-      this.doc.text(`GSTIN: ${invoice.customerGSTIN}`, 330, customerY);
-      customerY += 15;
-    }
-
-    // Due Date Box
-    this.doc.setFillColor(254, 242, 242); // Light red background
-    this.doc.rect(320, customerY + 10, 235, 25, "F");
-    this.doc.setTextColor(185, 28, 28);
-    this.doc.setFontSize(11);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.text(
-      `Due Date: ${new Date(invoice.dueDate).toLocaleDateString()}`,
-      330,
-      customerY + 27
+    // Add horizontal line after header
+    this.doc.setDrawColor(31, 41, 55);
+    this.doc.setLineWidth(1);
+    this.doc.line(
+      this.margin,
+      addressY + 20,
+      this.pageWidth - this.margin,
+      addressY + 20
     );
 
-    this.currentY = Math.max(this.currentY, customerY + 60);
+    this.currentY = addressY + 20;
+  }
+
+  private addBillingSection(invoice: Invoice) {
+    const leftBoxX = this.margin;
+    const rightBoxX = this.pageWidth / 2 + 20;
+    const sectionWidth = this.pageWidth / 2 - this.margin - 20;
+
+    // Bill From section with full company details
+    this.doc.setFontSize(14);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(31, 41, 55);
+    this.doc.text("Bill From :", leftBoxX, this.currentY + 20);
+
+    let billFromY = this.currentY + 38;
+
+    // Company name
+    this.doc.setFontSize(12);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(31, 41, 55);
+    this.doc.text(invoice.companyName, leftBoxX, billFromY);
+    billFromY += 18;
+
+    // Company address
+    this.doc.setFontSize(11);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(107, 114, 128);
+    const companyLines = this.splitText(invoice.companyAddress, sectionWidth);
+    companyLines.forEach((line) => {
+      this.doc.text(line, leftBoxX, billFromY);
+      billFromY += 12;
+    });
+
+    // Company phone if available
+    if (invoice.companyPhone) {
+      billFromY += 4;
+      this.doc.text(`Phone: ${invoice.companyPhone}`, leftBoxX, billFromY);
+      billFromY += 16;
+    }
+
+    // Company GST if available
+    if (invoice.companyGSTIN) {
+      this.doc.text(`GST: ${invoice.companyGSTIN}`, leftBoxX, billFromY);
+      billFromY += 16;
+    }
+
+    // Bill To section - no boxes
+    this.doc.setFontSize(14);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(31, 41, 55);
+    this.doc.text("Bill To :", rightBoxX, this.currentY + 20);
+
+    let detailsY = this.currentY + 38;
+
+    // Customer details with clean layout
+    this.doc.setFontSize(11);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(31, 41, 55);
+    this.doc.text(invoice.customerName, rightBoxX, detailsY);
+    detailsY += 18;
+
+    // Customer address lines
+    this.doc.setFontSize(11);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(107, 114, 128);
+    const customerLines = this.splitText(invoice.customerAddress, sectionWidth);
+    customerLines.forEach((line) => {
+      this.doc.text(line, rightBoxX, detailsY);
+      detailsY += 12;
+    });
+
+    // Customer phone if available
+    if (invoice.customerPhone) {
+      detailsY += 4;
+      this.doc.text(`Phone: ${invoice.customerPhone}`, rightBoxX, detailsY);
+      detailsY += 16;
+    }
+
+    // GST if available
+    if (invoice.customerGSTIN) {
+      detailsY += 4;
+      this.doc.text(`GST: ${invoice.customerGSTIN}`, rightBoxX, detailsY);
+      detailsY += 16;
+    }
+
+    // Calculate the maximum Y position from both sections
+    const maxBillFromY = billFromY;
+    const maxBillToY = detailsY + 10;
+    const maxY = Math.max(maxBillFromY, maxBillToY);
+
+    // Invoice details section - positioned to the right, below Bill To section
+    let invoiceDetailsY = detailsY + 20;
+
+    this.doc.setFontSize(12);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(31, 41, 55);
+    this.doc.text("Invoice Details", rightBoxX, invoiceDetailsY);
+
+    invoiceDetailsY += 20;
+    this.doc.setFontSize(10);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(107, 114, 128);
+
+    this.doc.text(
+      `Invoice No: ${invoice.invoiceNumber}`,
+      rightBoxX,
+      invoiceDetailsY
+    );
+    invoiceDetailsY += 14;
+
+    this.doc.text(
+      `Invoice Date: ${new Date(invoice.invoiceDate).toLocaleDateString(
+        "en-IN"
+      )}`,
+      rightBoxX,
+      invoiceDetailsY
+    );
+    invoiceDetailsY += 14;
+
+    this.doc.text(
+      `Due Date: ${new Date(invoice.dueDate).toLocaleDateString("en-IN")}`,
+      rightBoxX,
+      invoiceDetailsY
+    );
+
+    this.currentY = Math.max(maxY, invoiceDetailsY) + 40;
   }
 
   private addItemsTable(invoice: Invoice) {
-    const tableData = invoice.items.map((item, index) => [
-      (index + 1).toString(),
+    const tableData = invoice.items.map((item) => [
       item.description,
       item.quantity.toString(),
-      `₹${item.rate.toFixed(2)}`,
-      `₹${item.amount.toFixed(2)}`,
+      `Rs.${item.rate.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+      `Rs.${item.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
     ]);
 
-    // Use the imported autoTable function
+    // No empty rows - table adjusts to actual items
+
     autoTable(this.doc, {
       startY: this.currentY,
-      head: [["#", "Description", "Qty", "Rate", "Amount"]],
+      head: [["Product Description", "Quantity", "Rate", "Amount"]],
       body: tableData,
       theme: "grid",
       headStyles: {
-        fillColor: [37, 99, 235], // Blue header
+        fillColor: [31, 41, 55],
         textColor: [255, 255, 255],
-        fontSize: 12,
+        fontSize: 11,
         fontStyle: "bold",
         halign: "center",
+        cellPadding: 12,
       },
       bodyStyles: {
-        fontSize: 11,
-        textColor: [55, 65, 81],
+        fontSize: 10,
+        textColor: [31, 41, 55],
         cellPadding: 10,
+        lineColor: [229, 231, 235],
+        lineWidth: 0.5,
       },
       columnStyles: {
-        0: { halign: "center", cellWidth: 30 },
-        1: { halign: "left", cellWidth: 250 },
-        2: { halign: "center", cellWidth: 50 },
-        3: { halign: "right", cellWidth: 80 },
-        4: { halign: "right", cellWidth: 90 },
+        0: { halign: "left", cellWidth: 280 },
+        1: { halign: "center", cellWidth: 70 },
+        2: { halign: "right", cellWidth: 90 },
+        3: { halign: "right", cellWidth: 100 },
       },
       alternateRowStyles: {
         fillColor: [248, 250, 252],
       },
-      margin: { left: 40, right: 40 },
+      margin: { left: this.margin, right: this.margin },
       styles: {
-        lineColor: [209, 213, 219],
+        lineColor: [229, 231, 235],
         lineWidth: 0.5,
       },
     });
 
-    // Get the final Y position after the table
-    this.currentY = (this.doc as any).lastAutoTable.finalY + 30;
+    this.currentY = (this.doc as any).lastAutoTable.finalY + 20;
   }
 
   private addTotalsSection(invoice: Invoice) {
-    const totalsX = this.pageWidth - 200;
-    const boxWidth = 160;
-    const boxStartY = this.currentY;
+    // Align with table's right margin
+    const totalsX = this.pageWidth - this.margin - 135;
+    const labelWidth = 80;
 
-    // Totals background box
-    this.doc.setFillColor(248, 250, 252);
-    this.doc.rect(totalsX - 10, boxStartY - 10, boxWidth, 120, "F");
+    let totalY = this.currentY + 20;
 
-    // Border
-    this.doc.setDrawColor(209, 213, 219);
-    this.doc.setLineWidth(1);
-    this.doc.rect(totalsX - 10, boxStartY - 10, boxWidth, 120);
+    // Check if totals section would fit on current page
+    const totalsSectionHeight = 100;
+    if (
+      totalY + totalsSectionHeight >
+      this.pageHeight - this.footerHeight - 40
+    ) {
+      // Add new page if content overflows
+      this.doc.addPage();
+      totalY = 60;
+      this.currentY = 40;
+    }
+    const lineHeight = 16;
 
-    const lineHeight = 20;
-    let currentTotalY = boxStartY + 10;
-
-    // Subtotal
+    // Clean totals section without boxes
     this.doc.setFontSize(11);
     this.doc.setFont("helvetica", "normal");
-    this.doc.setTextColor(100, 116, 139);
-    this.doc.text("Subtotal:", totalsX, currentTotalY);
+    this.doc.setTextColor(31, 41, 55);
+
+    // Subtotal - right aligned amounts
+    this.doc.text("Subtotal:", totalsX, totalY);
     this.doc.text(
-      `₹${invoice.subtotal.toFixed(2)}`,
-      totalsX + 140,
-      currentTotalY,
+      `Rs.${invoice.subtotal.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+      })}`,
+      totalsX + 150,
+      totalY,
       { align: "right" }
     );
-
-    currentTotalY += lineHeight;
-
-    // Calculate tax rates dynamically
-    const sgstRate = invoice.subtotal > 0 ? ((invoice.sgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5";
-    const cgstRate = invoice.subtotal > 0 ? ((invoice.cgstAmount / invoice.subtotal) * 100).toFixed(1) : "2.5";
-
-    // SGST
-    this.doc.text(`SGST (${sgstRate}%):`, totalsX, currentTotalY);
-    this.doc.text(
-      `₹${invoice.sgstAmount.toFixed(2)}`,
-      totalsX + 140,
-      currentTotalY,
-      { align: "right" }
-    );
-
-    currentTotalY += lineHeight;
+    totalY += lineHeight;
 
     // CGST
-    this.doc.text(`CGST (${cgstRate}%):`, totalsX, currentTotalY);
+    this.doc.text("CGST:", totalsX, totalY);
     this.doc.text(
-      `₹${invoice.cgstAmount.toFixed(2)}`,
-      totalsX + 140,
-      currentTotalY,
+      `Rs.${invoice.cgstAmount.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+      })}`,
+      totalsX + 150,
+      totalY,
       { align: "right" }
     );
+    totalY += lineHeight;
 
-    currentTotalY += lineHeight + 5;
+    // SGST
+    this.doc.text("SGST:", totalsX, totalY);
+    this.doc.text(
+      `Rs.${invoice.sgstAmount.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+      })}`,
+      totalsX + 150,
+      totalY,
+      { align: "right" }
+    );
+    totalY += lineHeight;
 
     // Separator line
-    this.doc.setDrawColor(37, 99, 235);
-    this.doc.setLineWidth(2);
-    this.doc.line(totalsX, currentTotalY, totalsX + 140, currentTotalY);
-
-    currentTotalY += 15;
+    this.doc.setDrawColor(31, 41, 55);
+    this.doc.setLineWidth(1);
+    this.doc.line(totalsX, totalY, totalsX + 150, totalY);
+    totalY += 16;
 
     // Total Amount
-    this.doc.setFontSize(14);
+    this.doc.setFontSize(13);
     this.doc.setFont("helvetica", "bold");
-    this.doc.setTextColor(37, 99, 235);
-    this.doc.text("Total Amount:", totalsX, currentTotalY);
+    this.doc.setTextColor(59, 130, 246);
+    this.doc.text("Total Amount:", totalsX, totalY);
     this.doc.text(
-      `₹${invoice.totalAmount.toFixed(2)}`,
-      totalsX + 140,
-      currentTotalY,
+      `Rs.${invoice.totalAmount.toLocaleString("en-IN", {
+        minimumFractionDigits: 2,
+      })}`,
+      totalsX + 160,
+      totalY,
       { align: "right" }
     );
 
-    this.currentY += 140;
+    this.currentY = totalY + 40;
   }
 
-  private async addFooter(invoice: Invoice, qrCodeDataUrl?: string) {
-    const footerY = this.pageHeight - 100;
+  private addBankDetailsSection(invoice: Invoice, invoiceSettings?: any) {
+    // Only add if bank details are enabled in settings and available
+    if (!invoiceSettings?.showBankDetails) return;
 
-    // Footer line
-    this.doc.setDrawColor(209, 213, 219);
+    const sectionX = this.margin;
+    const sectionWidth = this.pageWidth - this.margin * 2;
+    let bankY = this.currentY + 30;
+
+    // Check if bank details section would fit on current page
+    const bankSectionHeight = 120;
+    if (bankY + bankSectionHeight > this.pageHeight - this.footerHeight - 40) {
+      // Add new page if content overflows
+      this.doc.addPage();
+      bankY = 40;
+      this.currentY = 40;
+    }
+
+    // Add top border line (like border-t in CSS)
+    this.doc.setDrawColor(229, 231, 235);
+    this.doc.setLineWidth(1);
+    this.doc.line(sectionX, bankY - 10, sectionX + sectionWidth, bankY - 10);
+
+    // Bank Details title with icon representation
+    this.doc.setFontSize(14);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(31, 41, 55);
+    this.doc.text("Bank Details", sectionX, bankY + 10);
+
+    bankY += 35;
+
+    // Background box (like bg-gray-50 rounded-lg)
+    const boxHeight = 80;
+    this.doc.setFillColor(248, 250, 252); // Light gray background
+    this.doc.setDrawColor(229, 231, 235);
     this.doc.setLineWidth(0.5);
-    this.doc.line(40, footerY - 20, this.pageWidth - 40, footerY - 20);
+    this.doc.roundedRect(sectionX, bankY, sectionWidth, boxHeight, 3, 3, "FD");
 
-    // If QR code is provided, add it to the right side
+    // Grid layout - 2 columns like md:grid-cols-2
+    const leftColX = sectionX + 20;
+    const rightColX = sectionX + sectionWidth / 2 + 10;
+    const colWidth = sectionWidth / 2 - 30;
+    let leftY = bankY + 20;
+    let rightY = bankY + 20;
+
+    this.doc.setFontSize(9);
+
+    // Left Column - Bank Name & Account Number
+    if (invoiceSettings.bankName) {
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(31, 41, 55);
+      this.doc.text("Bank Name:", leftColX, leftY);
+      leftY += 12;
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(75, 85, 99);
+      this.doc.text(
+        invoiceSettings.bankName || "Not configured",
+        leftColX,
+        leftY
+      );
+      leftY += 20;
+    }
+
+    if (invoiceSettings.accountNumber) {
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(31, 41, 55);
+      this.doc.text("Account Number:", leftColX, leftY);
+      leftY += 12;
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(75, 85, 99);
+      this.doc.text(
+        invoiceSettings.accountNumber || "Not configured",
+        leftColX,
+        leftY
+      );
+    }
+
+    // Right Column - IFSC Code & Account Holder
+    if (invoiceSettings.ifscCode) {
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(31, 41, 55);
+      this.doc.text("IFSC Code:", rightColX, rightY);
+      rightY += 12;
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(75, 85, 99);
+      this.doc.text(
+        invoiceSettings.ifscCode || "Not configured",
+        rightColX,
+        rightY
+      );
+      rightY += 20;
+    }
+
+    if (invoiceSettings.accountName) {
+      this.doc.setFont("helvetica", "bold");
+      this.doc.setTextColor(31, 41, 55);
+      this.doc.text("Account Holder:", rightColX, rightY);
+      rightY += 12;
+      this.doc.setFont("helvetica", "normal");
+      this.doc.setTextColor(75, 85, 99);
+      this.doc.text(
+        invoiceSettings.accountName || invoice.companyName,
+        rightColX,
+        rightY
+      );
+    }
+
+    this.currentY = bankY + boxHeight + 20;
+  }
+
+  private addQRCodeSection(qrCodeDataUrl?: string) {
+    // QR code will be added in footer, so just return here
+    return;
+  }
+
+  private addFooterToCurrentPage(qrCodeDataUrl?: string) {
+    // Footer always at bottom of page
+    const footerY = this.pageHeight - this.footerHeight + 10;
+    const qrSize = 50; // Smaller size to fit in footer
+
+    // Clean footer without box
+    this.doc.setFontSize(10);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.setTextColor(31, 41, 55);
+    this.doc.text("Payment Terms & Conditions", this.margin, footerY);
+
+    // Footer content
+    this.doc.setFontSize(8);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.setTextColor(107, 114, 128);
+    this.doc.text(
+      "Payment is due within 30 days of invoice date. Late payments may be subject to a 1.5% monthly service charge.",
+      this.margin,
+      footerY + 12
+    );
+    this.doc.text(
+      "This is electronically generated invoice, it does not require any signature.",
+      this.margin,
+      footerY + 22
+    );
+
+    // Add QR code to bottom right if available
     if (qrCodeDataUrl) {
+      const qrBoxX = this.pageWidth - this.margin - qrSize;
+      const qrY = footerY - 25; // Moved QR code higher
+
       try {
-        // Add QR code on the right side
-        const qrSize = 60;
-        const qrX = this.pageWidth - qrSize - 40;
-        const qrY = footerY - 15;
-        
-        this.doc.addImage(qrCodeDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
-        
-        // QR code label
-        this.doc.setFontSize(8);
+        // Add QR code to bottom right
+        this.doc.addImage(qrCodeDataUrl, "PNG", qrBoxX, qrY, qrSize, qrSize);
+
+        // QR code labels - positioned higher to avoid cutoff
+        this.doc.setFontSize(7);
         this.doc.setFont("helvetica", "normal");
-        this.doc.setTextColor(100, 116, 139);
-        this.doc.text(`Scan to Pay ₹${invoice.totalAmount.toFixed(2)}`, qrX + qrSize/2, qrY + qrSize + 10, {
+        this.doc.setTextColor(107, 114, 128);
+        this.doc.text("Scan to Pay", qrBoxX + qrSize / 2, qrY + qrSize + 10, {
           align: "center",
         });
-        this.doc.text("UPI Payment", qrX + qrSize/2, qrY + qrSize + 20, {
+        this.doc.text("UPI Payment", qrBoxX + qrSize / 2, qrY + qrSize + 18, {
           align: "center",
         });
       } catch (error) {
-        console.error("Error adding QR code to PDF:", error);
+        console.error("Error adding QR code to footer:", error);
+        // Show placeholder text instead
+        this.doc.setFontSize(7);
+        this.doc.setTextColor(107, 114, 128);
+        this.doc.text("QR Code", qrBoxX + qrSize / 2, qrY + qrSize / 2 - 5, {
+          align: "center",
+        });
       }
     }
-
-    // Thank you message (left side or center if no QR code)
-    const messageX = qrCodeDataUrl ? this.pageWidth / 3 : this.pageWidth / 2;
-    this.doc.setFontSize(16);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.setTextColor(37, 99, 235);
-    this.doc.text("Thank you for your business!", messageX, footerY, {
-      align: "center",
-    });
-
-    // Footer note
-    this.doc.setFontSize(10);
-    this.doc.setFont("helvetica", "normal");
-    this.doc.setTextColor(100, 116, 139);
-    this.doc.text(
-      "This is a computer-generated invoice and does not require a signature.",
-      messageX,
-      footerY + 25,
-      { align: "center" }
-    );
   }
 
-  private addStatusBadge(status: string) {
-    let badgeColor: [number, number, number];
-    let textColor: [number, number, number] = [255, 255, 255];
-
-    switch (status.toUpperCase()) {
-      case "PAID":
-        badgeColor = [22, 163, 74]; // Green
-        break;
-      case "SENT":
-        badgeColor = [37, 99, 235]; // Blue
-        break;
-      case "OVERDUE":
-        badgeColor = [239, 68, 68]; // Red
-        break;
-      default:
-        badgeColor = [107, 114, 128]; // Gray
+  private addFooter(invoice: Invoice, qrCodeDataUrl?: string) {
+    // Add footer to all pages
+    const totalPages = (this.doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      this.doc.setPage(i);
+      this.addFooterToCurrentPage(qrCodeDataUrl);
     }
-
-    // Badge background
-    this.doc.setFillColor(...badgeColor);
-    this.doc.roundedRect(this.pageWidth - 120, 120, 80, 25, 5, 5, "F");
-
-    // Badge text
-    this.doc.setTextColor(...textColor);
-    this.doc.setFontSize(10);
-    this.doc.setFont("helvetica", "bold");
-    this.doc.text(status.toUpperCase(), this.pageWidth - 80, 137, {
-      align: "center",
-    });
   }
 
   private splitText(text: string, maxWidth: number): string[] {
     return this.doc.splitTextToSize(text, maxWidth);
   }
 
-  public async generatePDF(invoice: Invoice, options?: { includeQRCode?: boolean; upiId?: string; merchantName?: string }): Promise<void> {
+  public async generatePDF(
+    invoice: Invoice,
+    options?: {
+      includeQRCode?: boolean;
+      upiId?: string;
+      merchantName?: string;
+    },
+    invoiceSettings?: any
+  ): Promise<void> {
     try {
       // Generate QR code if options are provided
-      let qrCodeDataUrl = '';
+      let qrCodeDataUrl = "";
       if (options?.includeQRCode && options?.upiId) {
         try {
-          const upiUrl = `upi://pay?pa=${options.upiId}&pn=${encodeURIComponent(options.merchantName || invoice.companyName)}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(`Payment for Invoice ${invoice.invoiceNumber}`)}`;
+          const merchantName = options.merchantName || invoice.companyName;
+          const upiUrl = `upi://pay?pa=${options.upiId}&pn=${encodeURIComponent(
+            merchantName
+          )}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(
+            `Payment for Invoice ${invoice.invoiceNumber}`
+          )}`;
           qrCodeDataUrl = await QRCode.toDataURL(upiUrl, {
             width: 150,
             margin: 2,
             color: {
-              dark: '#000000',
-              light: '#FFFFFF'
+              dark: "#000000",
+              light: "#FFFFFF",
             },
-            errorCorrectionLevel: 'M'
+            errorCorrectionLevel: "M",
           });
         } catch (qrError) {
           console.error("Error generating QR code:", qrError);
         }
       }
 
-      // Add all sections
-      this.addHeader(invoice);
-      this.addCompanyInfo(invoice);
-      this.addBillToSection(invoice);
-      this.addStatusBadge(invoice.status);
+      // Add all sections with proper spacing
+      this.addHeader(invoice, invoiceSettings);
+      this.addBillingSection(invoice);
       this.addItemsTable(invoice);
       this.addTotalsSection(invoice);
-      await this.addFooter(invoice, qrCodeDataUrl);
+      this.addBankDetailsSection(invoice, invoiceSettings);
+      this.addQRCodeSection(qrCodeDataUrl);
+      this.addFooter(invoice, qrCodeDataUrl);
 
       // Generate filename
       const fileName = `Invoice_${
@@ -425,16 +643,92 @@ export class ProfessionalInvoicePDF {
     }
   }
 
+  public async generatePDFAsBase64(
+    invoice: Invoice,
+    options?: {
+      includeQRCode?: boolean;
+      upiId?: string;
+      merchantName?: string;
+    },
+    invoiceSettings?: any
+  ): Promise<string> {
+    try {
+      // Generate QR code if options are provided
+      let qrCodeDataUrl = "";
+      if (options?.includeQRCode && options?.upiId) {
+        try {
+          const merchantName = options.merchantName || invoice.companyName;
+          const upiUrl = `upi://pay?pa=${options.upiId}&pn=${encodeURIComponent(
+            merchantName
+          )}&am=${invoice.totalAmount}&cu=INR&tn=${encodeURIComponent(
+            `Payment for Invoice ${invoice.invoiceNumber}`
+          )}`;
+          qrCodeDataUrl = await QRCode.toDataURL(upiUrl, {
+            width: 150,
+            margin: 2,
+            color: {
+              dark: "#000000",
+              light: "#FFFFFF",
+            },
+            errorCorrectionLevel: "M",
+          });
+        } catch (qrError) {
+          console.error("Error generating QR code:", qrError);
+        }
+      }
+
+      // Add all sections with proper spacing
+      this.addHeader(invoice, invoiceSettings);
+      this.addBillingSection(invoice);
+      this.addItemsTable(invoice);
+      this.addTotalsSection(invoice);
+      this.addBankDetailsSection(invoice, invoiceSettings);
+      this.addQRCodeSection(qrCodeDataUrl);
+      this.addFooter(invoice, qrCodeDataUrl);
+
+      // Return PDF as base64 string
+      return this.doc.output('datauristring').split(',')[1];
+    } catch (error) {
+      console.error("Error generating PDF as base64:", error);
+      throw new Error("Failed to generate PDF as base64");
+    }
+  }
 }
 
 // Export function for easy use
-export const downloadInvoiceAsPDF = async (invoice: Invoice, qrOptions?: { includeQRCode?: boolean; upiId?: string; merchantName?: string }) => {
+export const downloadInvoiceAsPDF = async (
+  invoice: Invoice,
+  qrOptions?: {
+    includeQRCode?: boolean;
+    upiId?: string;
+    merchantName?: string;
+  },
+  invoiceSettings?: any
+) => {
   try {
     const pdfGenerator = new ProfessionalInvoicePDF();
-    await pdfGenerator.generatePDF(invoice, qrOptions);
+    await pdfGenerator.generatePDF(invoice, qrOptions, invoiceSettings);
   } catch (error) {
     console.error("Error in downloadInvoiceAsPDF:", error);
     throw error;
   }
 };
 
+// Export function for generating PDF as base64 (for email attachments)
+export const generateInvoicePDFAsBase64 = async (
+  invoice: Invoice,
+  qrOptions?: {
+    includeQRCode?: boolean;
+    upiId?: string;
+    merchantName?: string;
+  },
+  invoiceSettings?: any
+): Promise<string> => {
+  try {
+    const pdfGenerator = new ProfessionalInvoicePDF();
+    return await pdfGenerator.generatePDFAsBase64(invoice, qrOptions, invoiceSettings);
+  } catch (error) {
+    console.error("Error in generateInvoicePDFAsBase64:", error);
+    throw error;
+  }
+};

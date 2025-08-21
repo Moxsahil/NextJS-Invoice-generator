@@ -8,12 +8,12 @@ const paymentSchema = z.object({
   amount: z.number().positive("Amount must be positive"),
   paymentMethodId: z.string().min(1, "Payment method is required"),
   description: z.string().min(1, "Description is required"),
-  type: z.enum(['SUBSCRIPTION_PAYMENT', 'WALLET_TOPUP']),
+  type: z.enum(['SUBSCRIPTION_PAYMENT']),
   subscriptionId: z.string().optional(),
 });
 
 // Simulate payment processing (in real world, you'd integrate with payment gateways)
-function simulatePaymentProcessing(paymentMethod: any, amount: number): {
+function simulatePaymentProcessing(paymentMethod: any): {
   success: boolean;
   transactionId?: string;
   failureReason?: string;
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing delay
 
-      const paymentResult = simulatePaymentProcessing(paymentMethod, validatedData.amount);
+      const paymentResult = simulatePaymentProcessing(paymentMethod);
 
       // Update transaction status
       const updatedTransaction = await tx.transaction.update({
@@ -140,19 +140,9 @@ export async function POST(request: NextRequest) {
         }
       });
 
-      // If payment successful, update user wallet or subscription
+      // If payment successful, handle subscription payment
       if (paymentResult.success) {
-        if (validatedData.type === 'WALLET_TOPUP') {
-          // Add to user wallet
-          await tx.user.update({
-            where: { id: userId },
-            data: {
-              walletBalance: {
-                increment: validatedData.amount
-              }
-            }
-          });
-        } else if (validatedData.type === 'SUBSCRIPTION_PAYMENT' && validatedData.subscriptionId) {
+        if (validatedData.type === 'SUBSCRIPTION_PAYMENT' && validatedData.subscriptionId) {
           // Handle subscription payment
           const subscription = await tx.subscription.findUnique({
             where: { id: validatedData.subscriptionId },

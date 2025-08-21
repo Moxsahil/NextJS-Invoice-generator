@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Camera, Save, Mail, User, Phone } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,6 +11,10 @@ import { toast } from "sonner";
 export default function ProfileSettings() {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [formData, setFormData] = useState({
     name: user?.name || "",
     email: user?.email || "",
@@ -29,6 +33,7 @@ export default function ProfileSettings() {
             name: data.user.name || "",
             email: data.user.email || "",
           });
+          setProfileImage(data.user.profileImage || null);
         }
       } catch (error) {
         console.error("Failed to fetch profile data:", error);
@@ -65,6 +70,55 @@ export default function ProfileSettings() {
     }
   };
 
+  const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image size must be less than 2MB');
+      return;
+    }
+
+    setPhotoLoading(true);
+
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('profileImage', file);
+
+      const response = await fetch('/api/user/upload-photo', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setProfileImage(data.imageUrl);
+        updateUser({ ...user, profileImage: data.imageUrl });
+        toast.success('Profile photo updated successfully!');
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to upload photo');
+      }
+    } catch (error) {
+      toast.error('Failed to upload photo');
+    } finally {
+      setPhotoLoading(false);
+    }
+  };
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -86,13 +140,36 @@ export default function ProfileSettings() {
               Profile Photo
             </label>
             <div className="flex items-center space-x-6">
-              <div className="w-20 h-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                <User className="w-10 h-10 text-white" />
+              <div className="w-20 h-20 rounded-full overflow-hidden">
+                {profileImage ? (
+                  <img 
+                    src={profileImage} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center">
+                    <User className="w-10 h-10 text-white" />
+                  </div>
+                )}
               </div>
               <div>
-                <Button variant="outline" size="sm">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  type="button"
+                  onClick={handlePhotoClick}
+                  disabled={photoLoading}
+                >
                   <Camera className="w-4 h-4 mr-2" />
-                  Change Photo
+                  {photoLoading ? 'Uploading...' : 'Change Photo'}
                 </Button>
                 <p className="text-xs text-gray-500 mt-2">
                   JPG, PNG or GIF. Max size 2MB.

@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
         id: true,
         name: true,
         email: true,
+        profileImage: true,
         createdAt: true,
         twoFactorEnabled: true,
         sessionTimeout: true,

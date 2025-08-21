@@ -1,18 +1,18 @@
-import Razorpay from 'razorpay';
-import crypto from 'crypto';
+import Razorpay from "razorpay";
+import crypto from "crypto";
 
 // Initialize Razorpay instance
 export const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  key_secret: process.env.RAZORPAY_KEY_SECRET || '',
+  key_id: process.env.RAZORPAY_KEY_ID || "",
+  key_secret: process.env.RAZORPAY_KEY_SECRET || "",
 });
 
 // Razorpay configuration
 export const razorpayConfig = {
-  key_id: process.env.RAZORPAY_KEY_ID || '',
-  currency: 'INR',
+  key_id: process.env.RAZORPAY_KEY_ID || "",
+  currency: "INR",
   theme: {
-    color: '#3B82F6', // Blue theme
+    color: "#3B82F6", // Blue theme
   },
 };
 
@@ -20,11 +20,11 @@ export const razorpayConfig = {
 export const razorpayPlans: Record<string, string> = {
   // Map our plan IDs to Razorpay plan IDs
   // These will be created in Razorpay dashboard
-  'basic-monthly': process.env.RAZORPAY_BASIC_MONTHLY_PLAN_ID || '',
-  'pro-monthly': process.env.RAZORPAY_PRO_MONTHLY_PLAN_ID || '',
-  'enterprise-monthly': process.env.RAZORPAY_ENTERPRISE_MONTHLY_PLAN_ID || '',
-  'basic-yearly': process.env.RAZORPAY_BASIC_YEARLY_PLAN_ID || '',
-  'pro-yearly': process.env.RAZORPAY_PRO_YEARLY_PLAN_ID || '',
+  "basic-monthly": process.env.RAZORPAY_BASIC_MONTHLY_PLAN_ID || "",
+  "pro-monthly": process.env.RAZORPAY_PRO_MONTHLY_PLAN_ID || "",
+  "enterprise-monthly": process.env.RAZORPAY_ENTERPRISE_MONTHLY_PLAN_ID || "",
+  "basic-yearly": process.env.RAZORPAY_BASIC_YEARLY_PLAN_ID || "",
+  "pro-yearly": process.env.RAZORPAY_PRO_YEARLY_PLAN_ID || "",
 };
 
 // Create or get customer in Razorpay
@@ -38,29 +38,30 @@ export async function createOrGetRazorpayCustomer(userData: {
     const customer = await razorpay.customers.create({
       name: userData.name,
       email: userData.email,
-      contact: userData.phone || '',
+      contact: userData.phone || "",
     });
 
     return customer;
   } catch (error: any) {
     // If customer already exists, try to find them by email
-    if (error?.error?.code === 'BAD_REQUEST_ERROR' && 
-        error?.error?.description?.includes('Customer already exists')) {
-      
+    if (
+      error?.error?.code === "BAD_REQUEST_ERROR" &&
+      error?.error?.description?.includes("Customer already exists")
+    ) {
       // Since Razorpay doesn't provide direct email search, we'll create a unique identifier
       // and store the customer ID in our database or return a mock customer for now
-      console.log("Customer already exists, using existing customer");
-      
+      console.error("Customer already exists, using existing customer");
+
       // For now, we'll return a mock customer response
       // In production, you should store and retrieve the customer ID from your database
       return {
-        id: `cust_${userData.email.replace(/[^a-zA-Z0-9]/g, '')}_${Date.now()}`,
+        id: `cust_${userData.email.replace(/[^a-zA-Z0-9]/g, "")}_${Date.now()}`,
         name: userData.name,
         email: userData.email,
-        contact: userData.phone || '',
+        contact: userData.phone || "",
       };
     }
-    
+
     throw error;
   }
 }
@@ -103,12 +104,12 @@ export async function createPaymentLink(params: {
   try {
     const paymentLink = await razorpay.paymentLink.create({
       amount: params.amount * 100, // Convert to paise
-      currency: params.currency || 'INR',
+      currency: params.currency || "INR",
       description: params.description,
       customer: {
         name: params.customer.name,
         email: params.customer.email,
-        contact: params.customer.contact || '',
+        contact: params.customer.contact || "",
       },
       notify: {
         sms: true,
@@ -117,7 +118,7 @@ export async function createPaymentLink(params: {
       reminder_enable: true,
       notes: params.notes || {},
       callback_url: params.callbackUrl,
-      callback_method: params.callbackMethod || 'get',
+      callback_method: params.callbackMethod || "get",
     });
 
     return paymentLink;
@@ -132,13 +133,13 @@ export function verifyPaymentSignature(
   razorpayPaymentId: string,
   razorpaySignature: string
 ): boolean {
-  const keySecret = process.env.RAZORPAY_KEY_SECRET || '';
-  
-  const body = razorpayOrderId + '|' + razorpayPaymentId;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+
+  const body = razorpayOrderId + "|" + razorpayPaymentId;
   const expectedSignature = crypto
-    .createHmac('sha256', keySecret)
+    .createHmac("sha256", keySecret)
     .update(body.toString())
-    .digest('hex');
+    .digest("hex");
 
   return expectedSignature === razorpaySignature;
 }
@@ -159,7 +160,10 @@ export async function cancelRazorpaySubscription(
   cancelAtCycleEnd: boolean = false
 ) {
   try {
-    const subscription = await razorpay.subscriptions.cancel(subscriptionId, cancelAtCycleEnd);
+    const subscription = await razorpay.subscriptions.cancel(
+      subscriptionId,
+      cancelAtCycleEnd
+    );
     return subscription;
   } catch (error) {
     throw error;
@@ -176,7 +180,7 @@ export async function createRazorpayOrder(params: {
   try {
     const order = await razorpay.orders.create({
       amount: params.amount * 100, // Convert to paise
-      currency: params.currency || 'INR',
+      currency: params.currency || "INR",
       receipt: params.receipt || `order_${Date.now()}`,
       notes: params.notes || {},
     });

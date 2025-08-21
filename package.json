@@ -20,6 +20,7 @@
     "@types/speakeasy": "^2.0.10",
     "@types/ua-parser-js": "^0.7.39",
     "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.7.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.12",
     "html-pdf": "^3.0.1",

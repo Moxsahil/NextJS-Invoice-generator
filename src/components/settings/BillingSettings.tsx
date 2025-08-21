@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
+import { useDialog } from "@/components/ui/Dialog";
 import { toast } from "sonner";
 import RazorpayPayment from "@/components/payments/RazorpayPayment";
 
@@ -31,7 +32,6 @@ interface Plan {
   isPopular: boolean;
   color: string;
 }
-
 
 interface BillingRecord {
   id: string;
@@ -50,6 +50,8 @@ interface UserSubscription {
     planId: string;
     trialEndsAt?: string;
     nextBillingDate?: string;
+    subscriptionStartDate?: string;
+    subscriptionEndDate?: string;
     invoiceUsage: number;
     walletBalance: number;
   };
@@ -59,8 +61,10 @@ export default function BillingSettings() {
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [billingHistory, setBillingHistory] = useState<BillingRecord[]>([]);
-  const [userSubscription, setUserSubscription] = useState<UserSubscription | null>(null);
+  const [userSubscription, setUserSubscription] =
+    useState<UserSubscription | null>(null);
   const [processing, setProcessing] = useState(false);
+  const { confirmDialog, DialogComponent } = useDialog();
 
   // Load data on component mount
   useEffect(() => {
@@ -70,18 +74,18 @@ export default function BillingSettings() {
   const loadBillingData = async () => {
     try {
       setLoading(true);
-      
+
       // Initialize billing if needed
       await fetch("/api/billing/initialize", {
         method: "POST",
-        credentials: "include"
+        credentials: "include",
       });
-      
+
       // Load all billing data in parallel
       const [plansRes, subscriptionRes, billingHistoryRes] = await Promise.all([
         fetch("/api/billing/plans", { credentials: "include" }),
         fetch("/api/billing/subscription", { credentials: "include" }),
-        fetch("/api/billing/history", { credentials: "include" })
+        fetch("/api/billing/history", { credentials: "include" }),
       ]);
 
       if (plansRes.ok) {
@@ -98,7 +102,6 @@ export default function BillingSettings() {
         const billingData = await billingHistoryRes.json();
         setBillingHistory(billingData.billingHistory || []);
       }
-
     } catch (error) {
       toast.error("Failed to load billing data");
     } finally {
@@ -107,18 +110,23 @@ export default function BillingSettings() {
   };
 
   const handleFreePlanChange = async (planId: string) => {
-    const targetPlan = plans.find(p => p.id === planId);
+    const targetPlan = plans.find((p) => p.id === planId);
     if (!targetPlan) {
       toast.error("Plan not found");
       return;
     }
 
-    const confirmed = confirm(
-      `Are you sure you want to change to the ${targetPlan.name} plan?\n\nThis is a free plan with limited features.`
+    await confirmDialog(
+      "Change to Free Plan",
+      `Are you sure you want to change to the ${targetPlan.name} plan?\n\nThis is a free plan with limited features.`,
+      async () => {
+        await executePlanChange(planId);
+      },
+      { variant: "primary" }
     );
+  };
 
-    if (!confirmed) return;
-
+  const executePlanChange = async (planId: string) => {
     setProcessing(true);
     try {
       const response = await fetch("/api/billing/subscription", {
@@ -153,10 +161,21 @@ export default function BillingSettings() {
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm("Are you sure you want to cancel your subscription? You'll lose access to premium features.")) {
-      return;
-    }
+    await confirmDialog(
+      "Cancel Subscription",
+      "Are you sure you want to cancel your subscription?\n\nYou'll lose access to premium features and your subscription will end at the current billing period.",
+      async () => {
+        await executeCancelSubscription();
+      },
+      {
+        variant: "danger",
+        confirmText: "Yes, Cancel Subscription",
+        cancelText: "Keep Subscription",
+      }
+    );
+  };
 
+  const executeCancelSubscription = async () => {
     setProcessing(true);
     try {
       const response = await fetch("/api/billing/subscription", {
@@ -181,7 +200,7 @@ export default function BillingSettings() {
 
   const downloadInvoice = (invoiceNumber: string) => {
     // Create download link for invoice
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = `/api/billing/invoice/${invoiceNumber}/download`;
     link.download = `invoice-${invoiceNumber}.pdf`;
     link.click();
@@ -190,19 +209,19 @@ export default function BillingSettings() {
 
   const getIconForPlan = (planName: string) => {
     const name = planName.toLowerCase();
-    if (name.includes('free')) return Star;
-    if (name.includes('basic')) return CheckCircle;
-    if (name.includes('pro')) return Crown;
-    if (name.includes('enterprise')) return Shield;
+    if (name.includes("free")) return Star;
+    if (name.includes("basic")) return CheckCircle;
+    if (name.includes("pro")) return Crown;
+    if (name.includes("enterprise")) return Shield;
     return CheckCircle;
   };
 
   const getColorForPlan = (color: string) => {
     const colors: Record<string, string> = {
       gray: "text-gray-600",
-      blue: "text-blue-600", 
+      blue: "text-blue-600",
       purple: "text-purple-600",
-      green: "text-green-600"
+      green: "text-green-600",
     };
     return colors[color] || "text-blue-600";
   };
@@ -211,8 +230,8 @@ export default function BillingSettings() {
     const colors: Record<string, string> = {
       gray: "bg-gray-100",
       blue: "bg-blue-100",
-      purple: "bg-purple-100", 
-      green: "bg-green-100"
+      purple: "bg-purple-100",
+      green: "bg-green-100",
     };
     return colors[color] || "bg-blue-100";
   };
@@ -229,7 +248,9 @@ export default function BillingSettings() {
   const getCurrentPlanLevel = () => {
     if (!userSubscription?.subscription?.plan) {
       // Find current plan from plans array if subscription doesn't have it
-      const currentPlan = plans.find(p => p.id === userSubscription?.userStatus.planId);
+      const currentPlan = plans.find(
+        (p) => p.id === userSubscription?.userStatus.planId
+      );
       return currentPlan ? getPlanLevel(currentPlan.price) : 0;
     }
     return getPlanLevel(userSubscription.subscription.plan.price);
@@ -240,19 +261,22 @@ export default function BillingSettings() {
     const currentLevel = getCurrentPlanLevel();
     const targetLevel = getPlanLevel(targetPlan.price);
     const isCurrentPlan = userSubscription?.userStatus.planId === targetPlan.id;
-    
+
     if (isCurrentPlan) return false; // Can't change to current plan
-    
+
     // Always allow upgrade or changing to/from free plan
     if (targetLevel > currentLevel || currentLevel === 0 || targetLevel === 0) {
       return true;
     }
-    
+
     // Prevent downgrades for active paid plans
-    if (userSubscription?.userStatus.subscriptionStatus === 'ACTIVE' && currentLevel > 0) {
+    if (
+      userSubscription?.userStatus.subscriptionStatus === "ACTIVE" &&
+      currentLevel > 0
+    ) {
       return false; // No downgrades for active paid plans
     }
-    
+
     return true; // Allow for trial or inactive plans
   };
 
@@ -261,13 +285,16 @@ export default function BillingSettings() {
     const currentLevel = getCurrentPlanLevel();
     const targetLevel = getPlanLevel(targetPlan.price);
     const isCurrentPlan = userSubscription?.userStatus.planId === targetPlan.id;
-    
+
     if (isCurrentPlan) return "Current Plan";
-    
+
     if (targetLevel > currentLevel) {
       return "Upgrade";
     } else if (targetLevel < currentLevel) {
-      if (userSubscription?.userStatus.subscriptionStatus === 'ACTIVE' && currentLevel > 0) {
+      if (
+        userSubscription?.userStatus.subscriptionStatus === "ACTIVE" &&
+        currentLevel > 0
+      ) {
         return "Downgrade Not Allowed";
       } else {
         return "Downgrade";
@@ -281,7 +308,9 @@ export default function BillingSettings() {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        <span className="ml-4 text-gray-600">Loading billing information...</span>
+        <span className="ml-4 text-gray-600">
+          Loading billing information...
+        </span>
       </div>
     );
   }
@@ -308,16 +337,19 @@ export default function BillingSettings() {
           <div className="flex items-center space-x-2">
             <Star className="w-5 h-5 text-gray-600" />
             <span className="text-gray-600 font-medium">
-              {userSubscription?.subscription?.plan?.name || 'Free Plan'}
+              {userSubscription?.subscription?.plan?.name || "Free Plan"}
             </span>
             {userSubscription && (
-              <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                userSubscription.userStatus.subscriptionStatus === 'TRIAL' 
-                  ? 'bg-orange-100 text-orange-800'
-                  : userSubscription.userStatus.subscriptionStatus === 'ACTIVE'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-gray-100 text-gray-800'
-              }`}>
+              <span
+                className={`ml-2 px-2 py-1 text-xs rounded-full ${
+                  userSubscription.userStatus.subscriptionStatus === "TRIAL"
+                    ? "bg-orange-100 text-orange-800"
+                    : userSubscription.userStatus.subscriptionStatus ===
+                      "ACTIVE"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+              >
                 {userSubscription.userStatus.subscriptionStatus}
               </span>
             )}
@@ -332,10 +364,29 @@ export default function BillingSettings() {
                   <Calendar className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                   <p className="text-sm text-gray-600">Next Billing Date</p>
                   <p className="font-semibold text-gray-900">
-                    {new Date(userSubscription.userStatus.nextBillingDate).toLocaleDateString()}
+                    {new Date(
+                      userSubscription.userStatus.nextBillingDate
+                    ).toLocaleDateString()}
                   </p>
                 </div>
               )}
+
+              {userSubscription.userStatus.subscriptionStartDate &&
+                userSubscription.userStatus.subscriptionEndDate && (
+                  <div className="text-center p-4 bg-indigo-50 rounded-lg">
+                    <Shield className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">Subscription Period</p>
+                    <p className="font-semibold text-gray-900 text-xs">
+                      {new Date(
+                        userSubscription.userStatus.subscriptionStartDate
+                      ).toLocaleDateString()}{" "}
+                      -{" "}
+                      {new Date(
+                        userSubscription.userStatus.subscriptionEndDate
+                      ).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
 
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <CreditCard className="w-8 h-8 text-green-600 mx-auto mb-2" />
@@ -344,7 +395,8 @@ export default function BillingSettings() {
                   ₹{userSubscription.subscription?.plan?.price || 0}
                   {userSubscription.subscription?.plan?.interval && (
                     <span className="text-sm text-gray-600">
-                      /{userSubscription.subscription.plan.interval.toLowerCase()}
+                      /
+                      {userSubscription.subscription.plan.interval.toLowerCase()}
                     </span>
                   )}
                 </p>
@@ -354,10 +406,14 @@ export default function BillingSettings() {
                 <BarChart className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                 <p className="text-sm text-gray-600">Usage This Month</p>
                 <p className="font-semibold text-gray-900">
-                  {userSubscription.userStatus.invoiceUsage} / 
-                  {userSubscription.subscription?.plan?.limits?.maxInvoicesPerMonth === -1 
-                    ? ' Unlimited' 
-                    : ` ${userSubscription.subscription?.plan?.limits?.maxInvoicesPerMonth || 0}`}
+                  {userSubscription.userStatus.invoiceUsage} /
+                  {userSubscription.subscription?.plan?.limits
+                    ?.maxInvoicesPerMonth === -1
+                    ? " Unlimited"
+                    : ` ${
+                        userSubscription.subscription?.plan?.limits
+                          ?.maxInvoicesPerMonth || 0
+                      }`}
                 </p>
               </div>
 
@@ -373,7 +429,10 @@ export default function BillingSettings() {
                 <div className="col-span-full">
                   <div className="text-center p-4 bg-orange-50 border border-orange-200 rounded-lg">
                     <p className="text-sm text-orange-600">
-                      Trial ends on {new Date(userSubscription.userStatus.trialEndsAt).toLocaleDateString()}
+                      Trial ends on{" "}
+                      {new Date(
+                        userSubscription.userStatus.trialEndsAt
+                      ).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -381,8 +440,8 @@ export default function BillingSettings() {
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={handleCancelSubscription}
                 disabled={processing}
               >
@@ -393,8 +452,12 @@ export default function BillingSettings() {
         ) : (
           <div className="text-center py-8 bg-gray-50 rounded-lg">
             <Star className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">Free Plan</h4>
-            <p className="text-gray-600 mb-4">You're currently on the free plan</p>
+            <h4 className="text-lg font-medium text-gray-900 mb-2">
+              Free Plan
+            </h4>
+            <p className="text-gray-600 mb-4">
+              You're currently on the free plan
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-md mx-auto">
               <div className="text-center p-3 bg-white rounded-lg border">
                 <p className="text-sm text-gray-600">Monthly Cost</p>
@@ -422,7 +485,8 @@ export default function BillingSettings() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((plan) => {
             const Icon = getIconForPlan(plan.name);
-            const isCurrentPlan = userSubscription?.userStatus.planId === plan.id;
+            const isCurrentPlan =
+              userSubscription?.userStatus.planId === plan.id;
             const canChange = canChangeToPlan(plan);
             const buttonText = getButtonText(plan);
             const currentLevel = getCurrentPlanLevel();
@@ -437,7 +501,7 @@ export default function BillingSettings() {
                   ${
                     isCurrentPlan
                       ? "border-purple-500 bg-purple-50"
-                      : canChange 
+                      : canChange
                       ? "border-gray-200 hover:border-gray-300"
                       : "border-gray-200 bg-gray-50 opacity-75"
                   }
@@ -474,9 +538,13 @@ export default function BillingSettings() {
 
                 <div className="text-center">
                   <div
-                    className={`${getBgColorForPlan(plan.color)} p-3 rounded-lg inline-flex mb-4`}
+                    className={`${getBgColorForPlan(
+                      plan.color
+                    )} p-3 rounded-lg inline-flex mb-4`}
                   >
-                    <Icon className={`w-6 h-6 ${getColorForPlan(plan.color)}`} />
+                    <Icon
+                      className={`w-6 h-6 ${getColorForPlan(plan.color)}`}
+                    />
                   </div>
 
                   <h4 className="text-lg font-semibold text-gray-900 mb-1">
@@ -491,7 +559,9 @@ export default function BillingSettings() {
                     <span className="text-3xl font-bold text-gray-900">
                       ₹{plan.price}
                     </span>
-                    <span className="text-gray-600">/{plan.interval.toLowerCase()}</span>
+                    <span className="text-gray-600">
+                      /{plan.interval.toLowerCase()}
+                    </span>
                   </div>
 
                   <ul className="text-sm space-y-2 mb-6 text-left">
@@ -506,55 +576,57 @@ export default function BillingSettings() {
                   {plan.price === 0 ? (
                     // Free plan - direct change
                     <Button
-                      onClick={() => canChange ? handleFreePlanChange(plan.id) : null}
+                      onClick={() =>
+                        canChange ? handleFreePlanChange(plan.id) : null
+                      }
                       disabled={!canChange || processing || loading}
                       className="w-full"
                       variant={
-                        isCurrentPlan 
-                          ? "outline" 
-                          : !canChange 
+                        isCurrentPlan
+                          ? "outline"
+                          : !canChange
                           ? "outline"
                           : "outline"
                       }
                     >
                       {buttonText}
                     </Button>
-                  ) : (
-                    // Paid plan - Razorpay payment
-                    canChange && !isCurrentPlan ? (
-                      <RazorpayPayment
-                        planId={plan.id}
-                        planName={plan.name}
-                        amount={plan.price}
-                        onSuccess={handlePaymentSuccess}
-                        onError={handlePaymentError}
-                        disabled={processing || loading}
-                      >
-                        <Button
-                          disabled={processing || loading}
-                          className="w-full"
-                          variant={isUpgrade ? "primary" : "outline"}
-                        >
-                          {buttonText}
-                        </Button>
-                      </RazorpayPayment>
-                    ) : (
+                  ) : // Paid plan - Razorpay payment
+                  canChange && !isCurrentPlan ? (
+                    <RazorpayPayment
+                      planId={plan.id}
+                      planName={plan.name}
+                      amount={plan.price}
+                      onSuccess={handlePaymentSuccess}
+                      onError={handlePaymentError}
+                      disabled={processing || loading}
+                    >
                       <Button
-                        disabled={true}
+                        disabled={processing || loading}
                         className="w-full"
-                        variant="outline"
+                        variant={isUpgrade ? "primary" : "outline"}
                       >
                         {buttonText}
                       </Button>
-                    )
+                    </RazorpayPayment>
+                  ) : (
+                    <Button
+                      disabled={true}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      {buttonText}
+                    </Button>
                   )}
 
                   {/* Explanation text for blocked downgrades */}
-                  {!canChange && !isCurrentPlan && targetLevel < currentLevel && (
-                    <p className="text-xs text-red-600 mt-2">
-                      Active plans cannot be downgraded
-                    </p>
-                  )}
+                  {!canChange &&
+                    !isCurrentPlan &&
+                    targetLevel < currentLevel && (
+                      <p className="text-xs text-red-600 mt-2">
+                        Active plans cannot be downgraded
+                      </p>
+                    )}
                 </div>
               </div>
             );
@@ -572,10 +644,13 @@ export default function BillingSettings() {
 
         <div className="text-center py-8 bg-gray-50 rounded-lg">
           <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h4 className="text-lg font-medium text-gray-900 mb-2">Secure Payments with Razorpay</h4>
+          <h4 className="text-lg font-medium text-gray-900 mb-2">
+            Secure Payments with Razorpay
+          </h4>
           <p className="text-gray-600 mb-4">
             All payments are processed securely through Razorpay. <br />
-            No need to store payment methods - pay directly when upgrading plans.
+            No need to store payment methods - pay directly when upgrading
+            plans.
           </p>
           <div className="flex justify-center items-center space-x-4 text-sm text-gray-500">
             <div className="flex items-center">
@@ -592,7 +667,6 @@ export default function BillingSettings() {
             </div>
           </div>
         </div>
-
       </Card>
 
       {/* Billing History */}
@@ -644,20 +718,22 @@ export default function BillingSettings() {
                     <td className="py-3 px-4 text-gray-900">{item.planName}</td>
                     <td className="py-3 px-4 text-gray-900">₹{item.amount}</td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.status === 'PAID' 
-                          ? 'bg-green-100 text-green-800'
-                          : item.status === 'PENDING'
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : item.status === 'FAILED'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          item.status === "PAID"
+                            ? "bg-green-100 text-green-800"
+                            : item.status === "PENDING"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : item.status === "FAILED"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
                         {item.status}
                       </span>
                     </td>
                     <td className="py-3 px-4 text-gray-900">
-                      {item.invoiceNumber || 'N/A'}
+                      {item.invoiceNumber || "N/A"}
                     </td>
                     <td className="py-3 px-4">
                       {item.invoiceNumber && (
@@ -677,6 +753,7 @@ export default function BillingSettings() {
           </table>
         </div>
       </Card>
+      {DialogComponent}
     </motion.div>
   );
 }
