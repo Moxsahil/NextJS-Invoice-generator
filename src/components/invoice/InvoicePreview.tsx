@@ -200,6 +200,7 @@ interface InvoiceSettings {
   ifscCode: string;
   upiId: string;
   merchantName: string;
+  companyLogo?: string;
 }
 
 interface CompanyDetails {
