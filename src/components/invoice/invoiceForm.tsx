@@ -114,25 +114,28 @@ export default function InvoiceForm() {
 
   const loadInvoiceSettings = async () => {
     try {
-      const response = await fetch("/api/settings/invoice", {
-        method: "GET",
-        credentials: "include",
-      });
+      // Load invoice settings and next invoice number in parallel
+      const [settingsResponse, nextNumberResponse] = await Promise.all([
+        fetch("/api/settings/invoice", {
+          method: "GET",
+          credentials: "include",
+        }),
+        fetch("/api/invoices/next-number", {
+          method: "GET",
+          credentials: "include",
+        })
+      ]);
 
-      if (response.ok) {
-        const result = await response.json();
+      if (settingsResponse.ok) {
+        const result = await settingsResponse.json();
         const settings = result.data;
         
-        // Check if user has customized invoice settings (not using defaults)
-        const hasCustomSettings = settings.prefix !== "INV" || settings.numberingStart !== 1;
+        let invoiceNumber = `INV-0001`; // fallback
         
-        let invoiceNumber;
-        if (hasCustomSettings) {
-          // Use custom settings format
-          invoiceNumber = `${settings.prefix}-${String(settings.numberingStart).padStart(4, '0')}${settings.suffix || ''}`;
-        } else {
-          // Use default Date.now() format
-          invoiceNumber = `INV-${Date.now()}`;
+        // Get the next invoice number from the dedicated API
+        if (nextNumberResponse.ok) {
+          const nextNumberResult = await nextNumberResponse.json();
+          invoiceNumber = nextNumberResult.nextInvoiceNumber;
         }
         
         // Update due date based on default due days
@@ -152,18 +155,18 @@ export default function InvoiceForm() {
         }));
       } else {
         console.error("Failed to load invoice settings");
-        // Fallback to Date.now() if settings fail to load
+        // Fallback to basic incremented format
         setFormData(prev => ({
           ...prev,
-          invoiceNumber: `INV-${Date.now()}`,
+          invoiceNumber: `INV-0001`,
         }));
       }
     } catch (error) {
       console.error("Error loading invoice settings:", error);
-      // Fallback to Date.now() if there's an error
+      // Fallback to basic incremented format
       setFormData(prev => ({
         ...prev,
-        invoiceNumber: `INV-${Date.now()}`,
+        invoiceNumber: `INV-0001`,
       }));
     }
   };
