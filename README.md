@@ -7,6 +7,8 @@ A full-featured, modern invoice management system built with Next.js 15, TypeScr
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=flat-square&logo=postgresql)
 ![Prisma](https://img.shields.io/badge/Prisma-6.13.0-2D3748?style=flat-square&logo=prisma)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-4.x-38B2AC?style=flat-square&logo=tailwind-css)
+![Razorpay](https://img.shields.io/badge/Razorpay-Payment-528FF0?style=flat-square&logo=razorpay)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-File_Upload-0052CC?style=flat-square&logo=cloudinary)
 
 ## ✨ Features
 
@@ -18,6 +20,8 @@ A full-featured, modern invoice management system built with Next.js 15, TypeScr
 - **PDF Generation**: Professional invoice PDFs with customizable templates
 - **Email Integration**: Automated invoice delivery via email
 - **Multi-status Tracking**: Draft, Sent, Paid, and Overdue status management
+- **Payment Integration**: Razorpay payment gateway with subscription plans
+- **File Upload**: Cloudinary integration for file and image management
 
 ### 🎨 User Experience
 
@@ -41,7 +45,7 @@ A full-featured, modern invoice management system built with Next.js 15, TypeScr
 - **Invoice Defaults**: Template customization and defaults
 - **Notification Preferences**: Email and app notification controls
 - **Security Settings**: Password changes and security preferences
-- **Billing Integration**: Subscription and payment management ready
+- **Billing Integration**: Razorpay subscription plans with webhook support
 
 ## 🚀 Quick Start
 
@@ -54,8 +58,8 @@ A full-featured, modern invoice management system built with Next.js 15, TypeScr
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/your-username/invoice-app.git
-cd invoice-app
+git clone https://github.com/Moxsahil/NextJS-Invoice-generator.git
+cd NextJS-Invoice-generator
 ```
 
 ### 2. Install Dependencies
@@ -83,6 +87,21 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-gmail-app-password
+
+# Razorpay Configuration
+RAZORPAY_KEY_ID="your_razorpay_key_id"
+RAZORPAY_KEY_SECRET="your_razorpay_key_secret"
+RAZORPAY_WEBHOOK_SECRET="your_webhook_secret_here"
+
+# Razorpay Plan IDs
+RAZORPAY_BASIC_MONTHLY_PLAN_ID="your_basic_plan_id"
+RAZORPAY_PRO_MONTHLY_PLAN_ID="your_pro_plan_id"
+RAZORPAY_ENTERPRISE_MONTHLY_PLAN_ID="your_enterprise_plan_id"
+
+# Cloudinary Configuration
+CLOUDINARY_CLOUD_NAME="your_cloud_name"
+CLOUDINARY_API_KEY="your_api_key"
+CLOUDINARY_API_SECRET="your_api_secret"
 ```
 
 ### 4. Database Setup
@@ -111,28 +130,67 @@ Visit [http://localhost:3000](http://localhost:3000) to see your application.
 ```
 invoice-app/
 ├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── api/               # API routes
-│   │   ├── auth/              # Authentication pages
-│   │   ├── dashboard/         # Dashboard pages
-│   │   └── layout.tsx         # Root layout
-│   ├── components/            # Reusable components
-│   │   ├── analytics/         # Analytics components
-│   │   ├── auth/              # Auth forms
-│   │   ├── customers/         # Customer management
-│   │   ├── invoice/           # Invoice components
-│   │   ├── layout/            # Layout components
-│   │   ├── settings/          # Settings components
-│   │   └── ui/                # UI components
-│   ├── hooks/                 # Custom React hooks
-│   ├── lib/                   # Utility functions
-│   ├── types/                 # TypeScript definitions
-│   └── generated/             # Prisma generated client
-├── prisma/                    # Database schema and migrations
-├── public/                    # Static assets
-├── docker-compose.yml         # Docker configuration
-├── Dockerfile                 # Container definition
-└── README.md                  # This file
+│   ├── app/                          # Next.js App Router
+│   │   ├── api/                     # API routes
+│   │   │   ├── analytics/           # Analytics endpoints
+│   │   │   ├── auth/                # Authentication endpoints
+│   │   │   ├── billing/             # Billing and subscription management
+│   │   │   ├── customers/           # Customer CRUD operations
+│   │   │   ├── invoices/            # Invoice management
+│   │   │   ├── notifications/       # Notification system
+│   │   │   ├── payments/            # Razorpay payment processing
+│   │   │   ├── settings/            # User settings management
+│   │   │   ├── user/                # User profile and company data
+│   │   │   └── webhooks/            # Payment gateway webhooks
+│   │   ├── auth/                    # Authentication pages
+│   │   │   ├── login/
+│   │   │   ├── register/
+│   │   │   ├── forgot-password/
+│   │   │   └── reset-password/
+│   │   ├── dashboard/               # Main application pages
+│   │   │   ├── analytics/           # Analytics dashboard
+│   │   │   ├── customers/           # Customer management
+│   │   │   ├── invoices/            # Invoice management
+│   │   │   └── settings/            # User settings
+│   │   └── layout.tsx               # Root layout
+│   ├── components/                  # Reusable components
+│   │   ├── analytics/               # Analytics charts and displays
+│   │   ├── auth/                    # Authentication forms
+│   │   ├── billing/                 # Subscription and payment components
+│   │   ├── customers/               # Customer management UI
+│   │   ├── invoice/                 # Invoice creation and display
+│   │   ├── landing/                 # Landing page components
+│   │   ├── layout/                  # App layout components
+│   │   ├── notifications/           # Notification system UI
+│   │   ├── payments/                # Payment gateway integration
+│   │   ├── settings/                # Settings panels and forms
+│   │   └── ui/                      # Reusable UI components
+│   ├── contexts/                    # React context providers
+│   ├── hooks/                       # Custom React hooks
+│   ├── lib/                         # Utility functions and configurations
+│   │   ├── utils/                   # Helper utilities
+│   │   ├── auth.ts                  # Authentication utilities
+│   │   ├── cloudinary.ts            # Cloudinary configuration
+│   │   ├── razorpay.ts              # Razorpay payment gateway
+│   │   ├── emailService.ts          # Email sending service
+│   │   ├── pdfGenerator.ts          # PDF generation utilities
+│   │   └── notification-service.ts   # Notification management
+│   ├── types/                       # TypeScript type definitions
+│   ├── generated/                   # Prisma generated client
+│   ├── fonts/                       # Custom fonts
+│   └── styles/                      # Additional stylesheets
+├── prisma/                          # Database schema and migrations
+│   ├── schema.prisma                # Database schema definition
+│   └── seed.ts                      # Database seeding script
+├── public/                          # Static assets
+│   ├── uploads/                     # File upload directory
+│   └── *.svg                        # Icon assets
+├── docker-compose.yml               # Docker development setup
+├── docker-compose.example.yml       # Docker configuration template
+├── Dockerfile                       # Container definition
+├── RAZORPAY_SETUP.md               # Payment gateway setup guide
+├── .env.example                     # Environment variables template
+└── README.md                        # This file
 ```
 
 ## 🗄️ Database Schema
@@ -210,6 +268,44 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-16-character-app-password
+```
+
+## 💳 Payment Integration (Razorpay)
+
+### Setup Razorpay Account
+
+1. Create account at [razorpay.com](https://razorpay.com)
+2. Navigate to Dashboard → Settings → API Keys
+3. Generate API Keys for your application
+4. Create subscription plans for your pricing tiers
+
+### Environment Configuration
+
+```bash
+RAZORPAY_KEY_ID="your_razorpay_key_id"
+RAZORPAY_KEY_SECRET="your_razorpay_key_secret"
+RAZORPAY_WEBHOOK_SECRET="your_webhook_secret_here"
+
+# Configure your subscription plan IDs
+RAZORPAY_BASIC_MONTHLY_PLAN_ID="plan_xxxxx"
+RAZORPAY_PRO_MONTHLY_PLAN_ID="plan_xxxxx"
+RAZORPAY_ENTERPRISE_MONTHLY_PLAN_ID="plan_xxxxx"
+```
+
+## 🖼️ File Upload (Cloudinary)
+
+### Setup Cloudinary Account
+
+1. Create account at [cloudinary.com](https://cloudinary.com)
+2. Navigate to Dashboard → Settings → Security
+3. Copy your Cloud Name, API Key, and API Secret
+
+### Environment Configuration
+
+```bash
+CLOUDINARY_CLOUD_NAME="your_cloud_name"
+CLOUDINARY_API_KEY="your_api_key"
+CLOUDINARY_API_SECRET="your_api_secret"
 ```
 
 ## 🚀 Deployment Guide
@@ -354,6 +450,19 @@ echo ".env*" >> .gitignore
 - `PUT /api/settings/profile` - Update user profile
 - `PUT /api/settings/security` - Update security settings
 - `PUT /api/settings/notifications` - Update notification preferences
+
+### Payment Endpoints
+
+- `POST /api/payment/create-subscription` - Create Razorpay subscription
+- `POST /api/payment/webhook` - Handle Razorpay webhook events
+- `GET /api/payment/plans` - Get available subscription plans
+- `POST /api/payment/cancel-subscription` - Cancel active subscription
+
+### File Upload Endpoints
+
+- `POST /api/upload/image` - Upload image to Cloudinary
+- `DELETE /api/upload/image` - Delete image from Cloudinary
+- `GET /api/upload/signed-url` - Get signed upload URL
 
 ## 🔧 Troubleshooting
 
