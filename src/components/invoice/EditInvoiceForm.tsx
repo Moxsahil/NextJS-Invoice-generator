@@ -89,7 +89,11 @@ export default function EditInvoiceForm({
   // Listen for tax rate updates from settings
   useEffect(() => {
     const handleSettingsUpdate = (event: CustomEvent) => {
-      if (event.detail && event.detail.sgstRate !== undefined && event.detail.cgstRate !== undefined) {
+      if (
+        event.detail &&
+        event.detail.sgstRate !== undefined &&
+        event.detail.cgstRate !== undefined
+      ) {
         setTaxRates({
           sgstRate: event.detail.sgstRate || 2.5,
           cgstRate: event.detail.cgstRate || 2.5,
@@ -97,10 +101,16 @@ export default function EditInvoiceForm({
       }
     };
 
-    window.addEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
-    
+    window.addEventListener(
+      "invoiceSettingsUpdated",
+      handleSettingsUpdate as EventListener
+    );
+
     return () => {
-      window.removeEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+      window.removeEventListener(
+        "invoiceSettingsUpdated",
+        handleSettingsUpdate as EventListener
+      );
     };
   }, []);
 
@@ -312,6 +322,7 @@ export default function EditInvoiceForm({
             >
               <option value="DRAFT">Draft</option>
               <option value="SENT">Sent</option>
+              <option value="PENDING">Pending</option>
               <option value="PAID">Paid</option>
               <option value="OVERDUE">Overdue</option>
             </select>
@@ -327,6 +338,8 @@ export default function EditInvoiceForm({
                     ? "bg-green-100 text-green-800"
                     : formData.status === "SENT"
                     ? "bg-blue-100 text-blue-800"
+                    : formData.status === "PENDING"
+                    ? "bg-yellow-100 text-yellow-800"
                     : formData.status === "OVERDUE"
                     ? "bg-red-100 text-red-800"
                     : "bg-gray-100 text-gray-800"
@@ -567,7 +580,7 @@ export default function EditInvoiceForm({
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Subtotal:</span>
-              <span className="font-semibold">
+              <span className="font-semibold text-black">
                 ₹
                 {totals.subtotal.toLocaleString("en-IN", {
                   minimumFractionDigits: 2,
@@ -575,8 +588,10 @@ export default function EditInvoiceForm({
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">SGST ({taxRates.sgstRate}%):</span>
-              <span className="font-semibold">
+              <span className="text-gray-600">
+                SGST ({taxRates.sgstRate}%):
+              </span>
+              <span className="font-semibold text-black">
                 ₹
                 {totals.sgstAmount.toLocaleString("en-IN", {
                   minimumFractionDigits: 2,
@@ -584,8 +599,10 @@ export default function EditInvoiceForm({
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">CGST ({taxRates.cgstRate}%):</span>
-              <span className="font-semibold">
+              <span className="text-gray-600">
+                CGST ({taxRates.cgstRate}%):
+              </span>
+              <span className="font-semibold text-black">
                 ₹
                 {totals.cgstAmount.toLocaleString("en-IN", {
                   minimumFractionDigits: 2,

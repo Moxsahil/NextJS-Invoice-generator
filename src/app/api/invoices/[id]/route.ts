@@ -15,7 +15,7 @@ const updateInvoiceSchema = z.object({
   customerAddress: z.string().min(1),
   invoiceDate: z.string(),
   dueDate: z.string(),
-  status: z.enum(["DRAFT", "SENT", "PAID", "OVERDUE"]),
+  status: z.enum(["DRAFT", "SENT", "PENDING", "PAID", "OVERDUE"]),
   subtotal: z.number(),
   sgstAmount: z.number(),
   cgstAmount: z.number(),

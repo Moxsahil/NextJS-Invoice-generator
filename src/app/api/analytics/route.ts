@@ -164,7 +164,7 @@ function calculateMetrics(invoices: any[]) {
     0
   );
 
-  const pendingInvoices = invoices.filter((inv) => inv.status === "SENT");
+  const pendingInvoices = invoices.filter((inv) => inv.status === "SENT" || inv.status === "PENDING");
   const pendingAmount = pendingInvoices.reduce(
     (sum, inv) => sum + inv.totalAmount,
     0

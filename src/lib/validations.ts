@@ -36,7 +36,7 @@ export const invoiceSchema = z.object({
 });
 
 export const updateInvoiceStatusSchema = z.object({
-  status: z.enum(["DRAFT", "SENT", "PAID", "OVERDUE"]),
+  status: z.enum(["DRAFT", "SENT", "PENDING", "PAID", "OVERDUE"]),
 });
 
 export type UserInput = z.infer<typeof userSchema>;

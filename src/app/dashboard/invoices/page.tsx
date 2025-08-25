@@ -56,6 +56,7 @@ export default function InvoicesPage() {
                   <option value="ALL">All Status</option>
                   <option value="DRAFT">Draft</option>
                   <option value="SENT">Sent</option>
+                  <option value="PENDING">Pending</option>
                   <option value="PAID">Paid</option>
                   <option value="OVERDUE">Overdue</option>
                 </select>

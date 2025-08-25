@@ -33,6 +33,7 @@ export interface Invoice {
 export enum InvoiceStatus {
   DRAFT = "DRAFT",
   SENT = "SENT",
+  PENDING = "PENDING",
   PAID = "PAID",
   OVERDUE = "OVERDUE",
 }

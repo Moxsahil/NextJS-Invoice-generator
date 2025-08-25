@@ -69,7 +69,11 @@ export default function InvoiceForm() {
   // Listen for invoice settings updates
   useEffect(() => {
     const handleSettingsUpdate = (event: CustomEvent) => {
-      if (event.detail && event.detail.sgstRate !== undefined && event.detail.cgstRate !== undefined) {
+      if (
+        event.detail &&
+        event.detail.sgstRate !== undefined &&
+        event.detail.cgstRate !== undefined
+      ) {
         setTaxRates({
           sgstRate: event.detail.sgstRate || 2.5,
           cgstRate: event.detail.cgstRate || 2.5,
@@ -77,10 +81,16 @@ export default function InvoiceForm() {
       }
     };
 
-    window.addEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
-    
+    window.addEventListener(
+      "invoiceSettingsUpdated",
+      handleSettingsUpdate as EventListener
+    );
+
     return () => {
-      window.removeEventListener('invoiceSettingsUpdated', handleSettingsUpdate as EventListener);
+      window.removeEventListener(
+        "invoiceSettingsUpdated",
+        handleSettingsUpdate as EventListener
+      );
     };
   }, []);
 
@@ -94,9 +104,9 @@ export default function InvoiceForm() {
       if (response.ok) {
         const result = await response.json();
         const companyData = result.data;
-        
+
         // Auto-populate company fields
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           companyName: companyData.companyName || "",
           companyGSTIN: companyData.gstin || "",
@@ -123,40 +133,40 @@ export default function InvoiceForm() {
         fetch("/api/invoices/next-number", {
           method: "GET",
           credentials: "include",
-        })
+        }),
       ]);
 
       if (settingsResponse.ok) {
         const result = await settingsResponse.json();
         const settings = result.data;
-        
+
         let invoiceNumber = `INV-0001`; // fallback
-        
+
         // Get the next invoice number from the dedicated API
         if (nextNumberResponse.ok) {
           const nextNumberResult = await nextNumberResponse.json();
           invoiceNumber = nextNumberResult.nextInvoiceNumber;
         }
-        
+
         // Update due date based on default due days
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + settings.defaultDueDays);
-        
+
         // Update tax rates from settings with fallback to defaults
         setTaxRates({
           sgstRate: settings.sgstRate || 2.5,
           cgstRate: settings.cgstRate || 2.5,
         });
-        
-        setFormData(prev => ({
+
+        setFormData((prev) => ({
           ...prev,
           invoiceNumber: invoiceNumber,
-          dueDate: dueDate.toISOString().split('T')[0],
+          dueDate: dueDate.toISOString().split("T")[0],
         }));
       } else {
         console.error("Failed to load invoice settings");
         // Fallback to basic incremented format
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           invoiceNumber: `INV-0001`,
         }));
@@ -164,7 +174,7 @@ export default function InvoiceForm() {
     } catch (error) {
       console.error("Error loading invoice settings:", error);
       // Fallback to basic incremented format
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         invoiceNumber: `INV-0001`,
       }));
@@ -293,8 +303,10 @@ export default function InvoiceForm() {
         setSubmissionStatus("success");
 
         // Show success toast notification
-        toast.success("Invoice created successfully! Customer data will be updated automatically.");
-        
+        toast.success(
+          "Invoice created successfully! Customer data will be updated automatically."
+        );
+
         // Show reminder notification if enabled
         if (data.remindersScheduled) {
           setTimeout(() => {
@@ -354,7 +366,6 @@ export default function InvoiceForm() {
               {error}
             </div>
           )}
-
 
           {/* Invoice Details */}
           <div className="bg-gray-50 p-4 sm:p-6 rounded-lg">
@@ -642,12 +653,12 @@ export default function InvoiceForm() {
                             handleItemChange(
                               index,
                               "quantity",
-                              parseFloat(e.target.value) || 0
+                              parseInt(e.target.value) || 1
                             )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
-                          min="0.01"
-                          step="0.01"
+                          min="1"
+                          step="1"
                           required
                         />
                       </div>
@@ -659,13 +670,19 @@ export default function InvoiceForm() {
                         <input
                           type="number"
                           value={item.rate}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const value = e.target.value;
                             handleItemChange(
                               index,
                               "rate",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
+                              value === "" ? 0 : parseFloat(value) || 0
+                            );
+                          }}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.select();
+                            }
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
                           min="0.01"
                           step="0.01"
@@ -733,12 +750,12 @@ export default function InvoiceForm() {
                             handleItemChange(
                               index,
                               "quantity",
-                              parseFloat(e.target.value) || 0
+                              parseInt(e.target.value) || 1
                             )
                           }
                           className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
-                          min="0.01"
-                          step="0.01"
+                          min="1"
+                          step="1"
                           required
                         />
                       </td>
@@ -746,13 +763,19 @@ export default function InvoiceForm() {
                         <input
                           type="number"
                           value={item.rate}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const value = e.target.value;
                             handleItemChange(
                               index,
                               "rate",
-                              parseFloat(e.target.value) || 0
-                            )
-                          }
+                              value === "" ? 0 : parseFloat(value) || 0
+                            );
+                          }}
+                          onFocus={(e) => {
+                            if (parseFloat(e.target.value) === 0) {
+                              e.target.select();
+                            }
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-transparent text-sm"
                           min="0.01"
                           step="0.01"
@@ -788,11 +811,15 @@ export default function InvoiceForm() {
                 <span className="font-semibold">₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm sm:text-base">
-                <span className="font-medium">SGST ({taxRates.sgstRate}%):</span>
+                <span className="font-medium">
+                  SGST ({taxRates.sgstRate}%):
+                </span>
                 <span className="font-semibold">₹{sgstAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-sm sm:text-base">
-                <span className="font-medium">CGST ({taxRates.cgstRate}%):</span>
+                <span className="font-medium">
+                  CGST ({taxRates.cgstRate}%):
+                </span>
                 <span className="font-semibold">₹{cgstAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg sm:text-xl border-t border-gray-300 pt-3">
@@ -829,7 +856,6 @@ export default function InvoiceForm() {
               </span>
             </button>
           </div>
-
         </form>
       </div>
     </div>

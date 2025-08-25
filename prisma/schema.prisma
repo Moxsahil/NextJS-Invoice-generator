@@ -155,6 +155,7 @@ model Customer {
 enum InvoiceStatus {
   DRAFT
   SENT
+  PENDING
   PAID
   OVERDUE
 }
